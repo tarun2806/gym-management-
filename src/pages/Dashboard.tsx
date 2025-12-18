@@ -1,48 +1,120 @@
+import { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, Activity, Plus, ArrowRight } from 'lucide-react';
 import { Stats } from '../components';
+import { supabase } from '../lib/supabase';
 
 const Dashboard: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState({
+    members: { count: 0, change: '+0%' },
+    classes: { count: 0, change: '+0' },
+    revenue: { value: '$0', change: '+0%' },
+    equipment: { value: '100%', change: '+0%' }
+  });
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch Members Count
+      const { count: membersCount } = await supabase
+        .from('members')
+        .select('*', { count: 'exact', head: true });
+
+      // 2. Fetch Classes Count
+      const { count: classesCount } = await supabase
+        .from('classes')
+        .select('*', { count: 'exact', head: true });
+
+      // 3. Fetch Revenue (Simulated sum from payments)
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount');
+
+      const totalRevenue = payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+
+      // 4. Equipment Status
+      const { data: equipment } = await supabase
+        .from('equipment')
+        .select('status');
+
+      const totalEquip = equipment?.length || 0;
+      const operationalEquip = equipment?.filter(e => e.status === 'operational').length || 0;
+      const equipmentHealth = totalEquip > 0 ? Math.round((operationalEquip / totalEquip) * 100) : 100;
+
+      setStatsData({
+        members: { count: membersCount || 0, change: '+5%' }, // Simulated change for now
+        classes: { count: classesCount || 0, change: '+2' },
+        revenue: { value: `$${totalRevenue.toLocaleString()}`, change: '+10%' },
+        equipment: { value: `${equipmentHealth}%`, change: '0%' }
+      });
+
+      // Fetch recent activities (simulated from multiple tables)
+      // For now, we'll just show the latest members joined
+      const { data: recentMembers } = await supabase
+        .from('members')
+        .select('name, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (recentMembers) {
+        const activities = recentMembers.map((m, i) => ({
+          id: i,
+          action: 'New member joined',
+          member: m.name,
+          time: new Date(m.created_at).toLocaleDateString(),
+          type: 'member'
+        }));
+        setRecentActivities(activities);
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const stats = [
     {
       title: 'Total Members',
-      value: '1,247',
-      change: '+12%',
+      value: String(statsData.members.count),
+      change: statsData.members.change,
       changeType: 'positive' as const,
       icon: Users,
       color: 'bg-blue-500',
     },
     {
       title: 'Active Classes',
-      value: '24',
-      change: '+3',
+      value: String(statsData.classes.count),
+      change: statsData.classes.change,
       changeType: 'positive' as const,
       icon: Calendar,
       color: 'bg-green-500',
     },
     {
       title: 'Revenue',
-      value: '$45,230',
-      change: '+8.2%',
+      value: statsData.revenue.value,
+      change: statsData.revenue.change,
       changeType: 'positive' as const,
       icon: TrendingUp,
       color: 'bg-purple-500',
     },
     {
       title: 'Equipment Status',
-      value: '98%',
-      change: '+2%',
+      value: statsData.equipment.value,
+      change: statsData.equipment.change,
       changeType: 'positive' as const,
       icon: Activity,
       color: 'bg-orange-500',
     },
-  ];
-
-  const recentActivities = [
-    { id: 1, action: 'New member registration', member: 'Sarah Johnson', time: '2 minutes ago', type: 'member' },
-    { id: 2, action: 'Class completed', member: 'Yoga Flow', time: '15 minutes ago', type: 'class' },
-    { id: 3, action: 'Equipment maintenance', member: 'Treadmill #3', time: '1 hour ago', type: 'equipment' },
-    { id: 4, action: 'Trainer assigned', member: 'Mike Chen', time: '2 hours ago', type: 'trainer' },
-    { id: 5, action: 'Payment received', member: 'John Smith', time: '3 hours ago', type: 'payment' },
   ];
 
   const quickActions = [
@@ -52,26 +124,34 @@ const Dashboard: React.FC = () => {
     { name: 'Check Equipment', icon: Activity, href: '/equipment', color: 'bg-orange-600 hover:bg-orange-700' },
   ];
 
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here's what's happening with your gym today.</p>
+          <p className="text-gray-600">Real-time overview of your gym.</p>
         </div>
         <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
+          {new Date().toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
           })}
         </div>
       </div>
 
       {/* Stats Grid */}
-      <Stats 
+      <Stats
         items={stats.map(stat => ({
           title: stat.title,
           value: stat.value,
@@ -79,7 +159,7 @@ const Dashboard: React.FC = () => {
           changeType: stat.changeType,
           icon: stat.icon,
           color: stat.color,
-          description: 'from last month'
+          description: 'current status'
         }))}
         columns={4}
       />
@@ -97,7 +177,7 @@ const Dashboard: React.FC = () => {
                 <a
                   key={action.name}
                   href={action.href}
-                  className={`${action.color} text-white rounded-lg p-4 text-center transition-colors duration-200`}
+                  className={`${action.color} text-white rounded-lg p-4 text-center transition-colors duration-200 block`}
                 >
                   <action.icon className="h-8 w-8 mx-auto mb-2" />
                   <p className="font-medium">{action.name}</p>
@@ -110,71 +190,30 @@ const Dashboard: React.FC = () => {
         {/* Recent Activities */}
         <div className="bg-white rounded-lg shadow border border-gray-200">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activities</h3>
+            <h3 className="text-lg font-medium text-gray-900">Recent Member Activity</h3>
           </div>
           <div className="p-6">
             <div className="space-y-4">
-              {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-start space-x-3">
-                  <div className={`w-2 h-2 rounded-full mt-2 ${
-                    activity.type === 'member' ? 'bg-blue-500' :
-                    activity.type === 'class' ? 'bg-green-500' :
-                    activity.type === 'equipment' ? 'bg-orange-500' :
-                    activity.type === 'trainer' ? 'bg-purple-500' : 'bg-gray-500'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                    <p className="text-sm text-gray-600">{activity.member}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+              {recentActivities.length > 0 ? (
+                recentActivities.map((activity) => (
+                  <div key={activity.id} className="flex items-start space-x-3">
+                    <div className={`w-2 h-2 rounded-full mt-2 bg-blue-500`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{activity.action}</p>
+                      <p className="text-sm text-gray-600">{activity.member}</p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-gray-500 text-sm">No recent activity found.</p>
+              )}
             </div>
             <div className="mt-6">
-              <a href="#" className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-                View all activities
+              <a href="/members" className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
+                View all members
                 <ArrowRight className="ml-1 h-4 w-4" />
               </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Upcoming Classes */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Upcoming Classes</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Yoga Flow</h4>
-                <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded-full">Today</span>
-              </div>
-              <p className="text-sm text-gray-600">Sarah Wilson</p>
-              <p className="text-sm text-gray-500">9:00 AM - 10:00 AM</p>
-              <p className="text-sm text-gray-500">12/20 participants</p>
-            </div>
-            
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">HIIT Training</h4>
-                <span className="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Tomorrow</span>
-              </div>
-              <p className="text-sm text-gray-600">Mike Chen</p>
-              <p className="text-sm text-gray-500">6:00 AM - 7:00 AM</p>
-              <p className="text-sm text-gray-500">8/15 participants</p>
-            </div>
-            
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="font-medium text-gray-900">Strength Training</h4>
-                <span className="text-sm text-purple-600 bg-purple-100 px-2 py-1 rounded-full">Tomorrow</span>
-              </div>
-              <p className="text-sm text-gray-600">David Rodriguez</p>
-              <p className="text-sm text-gray-500">5:30 PM - 6:30 PM</p>
-              <p className="text-sm text-gray-500">10/20 participants</p>
             </div>
           </div>
         </div>
