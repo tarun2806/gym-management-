@@ -1,0 +1,14 @@
+export { default as Dashboard } from './Dashboard';
+export { default as Members } from './Members';
+export { default as Classes } from './Classes';
+export { default as Trainers } from './Trainers';
+export { default as Equipment } from './Equipment';
+export { default as Admin } from './Admin';
+export { default as Login } from './Login';
+export { default as Payments } from './Payments';
+export { default as Reports } from './Reports';
+export { default as MembershipPlans } from './MembershipPlans';
+export { default as Attendance } from './Attendance';
+export { default as WorkoutPlans } from './WorkoutPlans';
+export { default as Settings } from './Settings';
+export { default as DietPlans } from './DietPlans';

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, 
-  Settings, 
-  Shield, 
-  BarChart3, 
-  Activity, 
-  Database, 
-  FileText, 
+import {
+  Users,
+  Settings,
+  Shield,
+  BarChart3,
+  Activity,
+  Database,
+  FileText,
   Bell,
   Eye,
   Edit,
@@ -21,7 +21,7 @@ interface User {
   id: number;
   username: string;
   email: string;
-  role: 'admin' | 'manager' | 'staff' | 'user';
+  role: 'owner' | 'admin' | 'manager' | 'staff' | 'user';
   status: 'active' | 'inactive' | 'suspended';
   lastLogin: string;
   permissions: string[];
@@ -46,6 +46,15 @@ const Admin: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState('all');
 
   const [users, setUsers] = useState<User[]>([
+    {
+      id: 0,
+      username: 'owner',
+      email: 'owner@gympro.com',
+      role: 'owner',
+      status: 'active',
+      lastLogin: '2024-12-19T11:00:00',
+      permissions: ['all']
+    },
     {
       id: 1,
       username: 'admin',
@@ -153,6 +162,7 @@ const Admin: React.FC = () => {
   ];
 
   const roles = [
+    { value: 'owner', label: 'Owner' },
     { value: 'admin', label: 'Administrator' },
     { value: 'manager', label: 'Manager' },
     { value: 'staff', label: 'Staff' },
@@ -201,6 +211,7 @@ const Admin: React.FC = () => {
 
   const getRoleColor = (role: string) => {
     switch (role) {
+      case 'owner': return 'bg-amber-100 text-amber-800 border border-amber-200';
       case 'admin': return 'bg-red-100 text-red-800';
       case 'manager': return 'bg-purple-100 text-purple-800';
       case 'staff': return 'bg-blue-100 text-blue-800';
@@ -243,10 +254,9 @@ const Admin: React.FC = () => {
           <div className="space-y-3">
             {systemLogs.slice(0, 5).map((log) => (
               <div key={log.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                <div className={`w-2 h-2 rounded-full ${
-                  log.level === 'error' ? 'bg-red-500' : 
+                <div className={`w-2 h-2 rounded-full ${log.level === 'error' ? 'bg-red-500' :
                   log.level === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-                }`} />
+                  }`} />
                 <div className="flex-1">
                   <p className="text-sm text-gray-900">{log.message}</p>
                   <p className="text-xs text-gray-500">
@@ -296,6 +306,7 @@ const Admin: React.FC = () => {
         placeholder="Search users by username or email..."
         filters={[
           { value: 'all', label: 'All Roles' },
+          { value: 'owner', label: 'Owners' },
           { value: 'admin', label: 'Administrators' },
           { value: 'manager', label: 'Managers' },
           { value: 'staff', label: 'Staff' },
@@ -450,7 +461,7 @@ const Admin: React.FC = () => {
   const renderSecurity = () => (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Security Dashboard</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <div className="text-center">
@@ -493,7 +504,7 @@ const Admin: React.FC = () => {
             </div>
             <span className="text-xs text-gray-500">2 minutes ago</span>
           </div>
-          
+
           <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
@@ -546,11 +557,10 @@ const Admin: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 <tab.icon className="h-4 w-4 inline mr-2" />
                 {tab.label}
