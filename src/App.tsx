@@ -17,7 +17,7 @@ import {
   DietPlans
 } from "./pages";
 import { AuthProvider } from "./contexts/AuthContext";
-import "./App.css";
+
 
 export default function App() {
   return (

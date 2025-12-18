@@ -17,15 +17,7 @@ import {
 import { Button, Card, Stats, SearchInput, Modal, Form, FormField } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: 'owner' | 'admin' | 'manager' | 'staff' | 'user';
-  status: 'active' | 'inactive' | 'suspended';
-  lastLogin: string;
-  permissions: string[];
-}
+import type { User } from '../types';
 
 interface SystemLog {
   id: number;
@@ -353,12 +345,12 @@ const Admin: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status)}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(user.status || 'inactive')}`}>
                       {user.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(user.lastLogin).toLocaleDateString()}
+                    {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center space-x-2">

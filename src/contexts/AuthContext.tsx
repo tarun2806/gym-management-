@@ -3,14 +3,7 @@ import type { ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
-// Extend the user interface
-interface User {
-  id: string;
-  username: string;
-  email: string | undefined;
-  role: 'owner' | 'admin' | 'manager' | 'staff' | 'user';
-  permissions: string[];
-}
+import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;

@@ -8,7 +8,6 @@ import {
     Scale,
     Activity,
     Flame,
-    ChefHat,
     ArrowRight,
     Droplets,
     Egg,
@@ -156,7 +155,9 @@ const DietPlans: React.FC = () => {
             const aiData = JSON.parse(jsonString);
 
             // Add IDs and Images to meals
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const processMeals = (meals: any[], type: string) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 return meals.map((m: any, i: number) => ({
                     ...m,
                     id: i + 1,
