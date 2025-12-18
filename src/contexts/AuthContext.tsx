@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       id: sbUser.id,
       username: sbUser.email?.split('@')[0] || 'User',
       email: sbUser.email,
-      role: role as any,
+      role: role as User['role'],
       permissions: ['all'] // simplified for now
     };
   };
