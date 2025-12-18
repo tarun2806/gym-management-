@@ -9,3 +9,4 @@ export { default as DataTable } from './DataTable';
 export { default as Modal } from './Modal';
 export { default as Form, FormField } from './Form';
 export { default as ProtectedRoute } from './ProtectedRoute';
+export { default as ComingSoon } from './ComingSoon';
