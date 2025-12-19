@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Shield, Database, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Shield, Mail, Lock } from 'lucide-react';
 import { Button, Card, Form, FormField } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -68,11 +68,7 @@ const Login: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const fillDemoAccount = (email: string, password: string) => {
-    setFormData(prev => ({ ...prev, email, password }));
-    setError('');
-    setMode('login');
-  };
+
 
   return (
     <div className="min-h-screen bg-slate-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -107,8 +103,8 @@ const Login: React.FC = () => {
               <button
                 onClick={() => setMode('login')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === 'login'
-                    ? 'bg-slate-700 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-700 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Sign In
@@ -116,8 +112,8 @@ const Login: React.FC = () => {
               <button
                 onClick={() => setMode('signup')}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${mode === 'signup'
-                    ? 'bg-slate-700 text-white shadow'
-                    : 'text-slate-400 hover:text-white'
+                  ? 'bg-slate-700 text-white shadow'
+                  : 'text-slate-400 hover:text-white'
                   }`}
               >
                 Sign Up
@@ -247,29 +243,10 @@ const Login: React.FC = () => {
             )}
           </Form>
 
-          <div className="mt-6 pt-6 border-t border-slate-700 text-center">
-            <div className="text-xs text-slate-500 mb-2 flex items-center justify-center">
-              <Database className="h-3 w-3 mr-1" />
-              Backend: Supabase
-            </div>
-          </div>
+
         </Card>
 
-        {/* Demo Accounts */}
-        <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-300">
-              <span className="font-semibold block">Demo Access</span>
-              <span className="text-xs text-slate-500">For testing without Supabase</span>
-            </div>
-            <button
-              onClick={() => fillDemoAccount('admin', 'password')}
-              className="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-md transition-colors"
-            >
-              Auto-Fill
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );
