@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronRight, Dumbbell, Calendar, Info, Trash2 } from 'lucide-react';
+import { Plus, ChevronRight, Dumbbell, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '../components';
 import { supabase } from '../lib/supabase';
 
