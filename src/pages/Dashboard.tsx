@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Users, Calendar, TrendingUp, Activity, Plus, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Stats } from '../components';
 import { supabase } from '../lib/supabase';
 
@@ -118,10 +119,10 @@ const Dashboard: React.FC = () => {
   ];
 
   const quickActions = [
-    { name: 'Add Member', icon: Plus, href: '/members', color: 'bg-blue-600 hover:bg-blue-700' },
-    { name: 'Schedule Class', icon: Calendar, href: '/classes', color: 'bg-green-600 hover:bg-green-700' },
-    { name: 'Assign Trainer', icon: Users, href: '/trainers', color: 'bg-purple-600 hover:bg-purple-700' },
-    { name: 'Check Equipment', icon: Activity, href: '/equipment', color: 'bg-orange-600 hover:bg-orange-700' },
+    { name: 'Add Member', icon: Plus, to: '/members', color: 'bg-blue-600 hover:bg-blue-700' },
+    { name: 'Schedule Class', icon: Calendar, to: '/classes', color: 'bg-green-600 hover:bg-green-700' },
+    { name: 'Assign Trainer', icon: Users, to: '/trainers', color: 'bg-purple-600 hover:bg-purple-700' },
+    { name: 'Check Equipment', icon: Activity, to: '/equipment', color: 'bg-orange-600 hover:bg-orange-700' },
   ];
 
   if (loading) {
@@ -174,14 +175,14 @@ const Dashboard: React.FC = () => {
           <div className="p-6">
             <div className="grid grid-cols-2 gap-4">
               {quickActions.map((action) => (
-                <a
+                <Link
                   key={action.name}
-                  href={action.href}
+                  to={action.to}
                   className={`${action.color} text-white rounded-lg p-4 text-center transition-colors duration-200 block`}
                 >
                   <action.icon className="h-8 w-8 mx-auto mb-2" />
                   <p className="font-medium">{action.name}</p>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -210,10 +211,10 @@ const Dashboard: React.FC = () => {
               )}
             </div>
             <div className="mt-6">
-              <a href="/members" className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
+              <Link to="/members" className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
                 View all members
                 <ArrowRight className="ml-1 h-4 w-4" />
-              </a>
+              </Link>
             </div>
           </div>
         </div>

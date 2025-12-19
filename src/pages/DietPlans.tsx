@@ -120,7 +120,10 @@ const DietPlans: React.FC = () => {
 
         try {
             const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            // Reverting to gemini-pro for better regional availability and compatibility
+            const model = genAI.getGenerativeModel({
+                model: "gemini-pro"
+            });
 
             const prompt = `
         You are an expert nutritionist specializing in South Indian cuisine.
@@ -132,11 +135,13 @@ const DietPlans: React.FC = () => {
         
         Calculate their TDEE and target calories for the goal properly.
         
-        Return ONLY valid JSON (no markdown formatting) with this exact structure:
+        Return ONLY valid JSON. Start the response with '{' and end with '}'. No markdown backticks, no text before or after the JSON.
+        
+        Strict JSON structure:
         {
-          "calories": number (total daily target),
-          "macros": { "protein": number, "carbs": number, "fats": number } (percentage distribution),
-          "description": "string (brief summary of why this plan works)",
+          "calories": number,
+          "macros": { "protein": number, "carbs": number, "fats": number },
+          "description": "string",
           "meals": {
             "breakfast": [{ "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number }],
             "lunch": [{ "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number }],
@@ -150,17 +155,29 @@ const DietPlans: React.FC = () => {
             const response = await result.response;
             const text = response.text();
 
-            // Clean up markdown if present
-            const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-            const aiData = JSON.parse(jsonString);
+            let aiData;
+            try {
+                // Remove any outer markdown formatting if current model still includes it
+                const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+                aiData = JSON.parse(cleanedText);
+            } catch {
+                console.error("JSON Parsing Error:", text);
+                throw new Error("The AI returned an invalid format. Please try again.");
+            }
+
+            // Structure validation
+            if (!aiData.calories || !aiData.meals) {
+                throw new Error("Received incomplete data from AI. Please retry.");
+            }
 
             // Add IDs and Images to meals
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const processMeals = (meals: any[], type: string) => {
+                if (!meals || !Array.isArray(meals)) return [];
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return meals.map((m: any, i: number) => ({
+                return meals.map((m: any) => ({
                     ...m,
-                    id: i + 1,
+                    id: Math.random(),
                     image: getPlaceholderImage(type, formData.dietPreference)
                 }));
             };
@@ -169,9 +186,9 @@ const DietPlans: React.FC = () => {
                 id: Date.now().toString(),
                 date: new Date().toLocaleDateString(),
                 calories: aiData.calories,
-                macros: aiData.macros,
+                macros: aiData.macros || { protein: 30, carbs: 40, fats: 30 },
                 goals: formData.goal,
-                description: aiData.description,
+                description: aiData.description || "A balanced South Indian plan tailored for your fitness goals.",
                 dietPreference: formData.dietPreference,
                 meals: {
                     breakfast: processMeals(aiData.meals.breakfast, 'breakfast'),
@@ -183,9 +200,20 @@ const DietPlans: React.FC = () => {
 
             setGeneratedPlan(finalPlan);
 
-        } catch (err) {
-            console.error("Gemini API Error:", err);
-            setError("Failed to generate plan. Please check your internet connection or try again.");
+        } catch (err: unknown) {
+            const error = err as { message?: string; status?: number };
+            console.error("Gemini API Error Detail:", error);
+
+            // Provide more helpful error messages
+            if (error.message?.includes("API_KEY_INVALID")) {
+                setError("Invalid API Key. Please verify your credentials.");
+            } else if (error.message?.includes("location is not supported")) {
+                setError("AI generation is limited in your current region.");
+            } else if (error.status === 429) {
+                setError("Rate limit exceeded. Please wait a moment and try again.");
+            } else {
+                setError(error.message || "Failed to generate plan. Please try again.");
+            }
         } finally {
             setIsGenerating(false);
         }
