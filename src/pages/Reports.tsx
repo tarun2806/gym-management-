@@ -121,12 +121,12 @@ const Reports: React.FC = () => {
                     <div className="flex items-center gap-2 text-indigo-600 font-black uppercase tracking-widest text-[10px] mb-3">
                         <BarChart3 className="h-4 w-4" /> Intelligence Dashboard
                     </div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Gym Analytics</h1>
-                    <p className="text-slate-400 font-medium mt-1">Real-time performance metrics and user growth mapping.</p>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-900 tracking-tight">Gym Analytics</h1>
+                    <p className="text-slate-400 font-medium mt-1 text-sm">Real-time performance mapping.</p>
                 </div>
-                <div className="flex gap-4">
-                    <Button variant="outline" className="rounded-2xl px-6 h-14" icon={Filter}>Filters</Button>
-                    <Button variant="primary" className="rounded-2xl px-6 h-14 shadow-xl shadow-indigo-200" icon={Download}>Export</Button>
+                <div className="flex gap-2 sm:gap-4">
+                    <Button variant="outline" className="flex-1 sm:flex-none rounded-2xl px-4 sm:px-6 h-12 sm:h-14" icon={Filter}>Filters</Button>
+                    <Button variant="primary" className="flex-1 sm:flex-none rounded-2xl px-4 sm:px-6 h-12 sm:h-14 shadow-xl shadow-indigo-200" icon={Download}>Export</Button>
                 </div>
             </div>
 

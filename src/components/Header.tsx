@@ -55,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     {showNotifications && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setShowNotifications(false)} />
-                            <div className="absolute right-0 mt-3 w-80 bg-white rounded-[24px] shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute right-0 mt-3 w-[calc(100vw-32px)] sm:w-80 bg-white rounded-[24px] shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="p-4 border-b border-slate-50 flex items-center justify-between">
                                     <h3 className="font-black text-[11px] uppercase tracking-[0.1em] text-slate-900">Notifications</h3>
                                     <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">3 New</span>
@@ -99,7 +99,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                     {showUserMenu && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
-                            <div className="absolute right-0 mt-3 w-64 bg-white rounded-[24px] shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="absolute right-0 mt-3 w-[calc(100vw-32px)] sm:w-64 bg-white rounded-[24px] shadow-2xl shadow-slate-200/50 border border-slate-100 p-2 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
                                 <div className="p-4 border-b border-slate-50 mb-2">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Authenticated Account</p>
                                     <p className="font-black text-slate-900 tracking-tight">{user?.username || 'Administrator'}</p>

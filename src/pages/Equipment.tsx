@@ -181,8 +181,8 @@ const Equipment: React.FC = () => {
     <div className="space-y-10 pb-20 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Equipment</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage gym inventory and maintenance.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Equipment</h1>
+          <p className="text-slate-500 font-medium mt-1 text-sm sm:text-base">Inventory and maintenance.</p>
         </div>
         <div className="flex gap-4">
           <Button variant="outline" className="rounded-xl px-4 h-11 text-[10px]" icon={History}>Logs</Button>

@@ -223,7 +223,7 @@ const Admin: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 rounded-[32px] border-0 bg-white shadow-xl shadow-slate-200/40 p-10">
+        <Card className="lg:col-span-2 rounded-[32px] border-0 bg-white shadow-xl shadow-slate-200/40 p-6 sm:p-10">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-2xl font-black text-slate-900 tracking-tight">Recent Activity</h3>
@@ -247,7 +247,7 @@ const Admin: React.FC = () => {
           </div>
         </Card>
 
-        <Card className="rounded-[32px] border-0 bg-slate-900 text-white p-10 relative overflow-hidden">
+        <Card className="rounded-[32px] border-0 bg-slate-900 text-white p-6 sm:p-10 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10">
             <Database className="h-32 w-32" />
           </div>

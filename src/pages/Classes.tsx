@@ -155,8 +155,8 @@ const Classes: React.FC = () => {
     <div className="space-y-10 pb-20 animate-in fade-in duration-500 text-slate-900">
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Classes</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage fitness sessions and schedules.</p>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Classes</h1>
+          <p className="text-slate-500 font-medium mt-1 text-sm sm:text-base">Fitness sessions and schedules.</p>
         </div>
         <Button variant="primary" className="rounded-xl px-6 h-12" icon={Plus} onClick={() => setShowAddModal(true)}>Add Class</Button>
       </div>

@@ -31,7 +31,7 @@ const Layout: React.FC = () => {
                 <Header onMenuClick={() => setIsSidebarOpen(true)} />
 
                 {/* Main Dynamic Viewport */}
-                <main className="flex-1 overflow-y-auto focus:outline-none p-6 sm:p-10 lg:p-12 relative z-10 custom-scrollbar scroll-smooth">
+                <main className="flex-1 overflow-y-auto focus:outline-none p-4 sm:p-10 lg:p-12 relative z-10 custom-scrollbar scroll-smooth">
                     <div className="max-w-[1600px] mx-auto">
                         <Outlet />
                     </div>
