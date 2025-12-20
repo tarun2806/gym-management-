@@ -57,8 +57,8 @@ const Attendance: React.FC = () => {
             const { data, error } = await supabase
                 .from('attendance')
                 .select(`
-          *,
-          member:members(name, membership_type, phone)
+    *,
+    member: members(name, membership_type, phone)
         `)
                 .gte('check_in', today.toISOString())
                 .order('check_in', { ascending: false });
@@ -119,7 +119,7 @@ const Attendance: React.FC = () => {
             fetchTodayAttendance();
         } catch (error: unknown) {
             const err = error as { message?: string };
-            alert(`Check-in failed: ${err.message || 'Error occurred'}`);
+            alert(`Check -in failed: ${err.message || 'Error occurred'} `);
         } finally {
             setSubmitLoading(false);
         }
@@ -136,7 +136,7 @@ const Attendance: React.FC = () => {
             fetchTodayAttendance();
         } catch (error: unknown) {
             const err = error as { message?: string };
-            alert(`Check-out failed: ${err.message || 'Error occurred'}`);
+            alert(`Check - out failed: ${err.message || 'Error occurred'} `);
         }
     };
 
@@ -176,13 +176,13 @@ const Attendance: React.FC = () => {
                     { label: "Completed", value: stats.completed, icon: UserCheck, color: "indigo" },
                 ].map((stat) => (
                     <Card key={stat.label} className="p-6 rounded-2xl border-slate-100 shadow-lg shadow-slate-200/40 relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 w-24 h-24 bg-${stat.color}-50 rounded-bl-[80px] -mr-6 -mt-6 opacity-50 group-hover:scale-105 transition-transform`} />
+                        <div className={`absolute top - 0 right - 0 w - 24 h - 24 bg - ${stat.color} -50 rounded - bl - [80px] - mr - 6 - mt - 6 opacity - 50 group - hover: scale - 105 transition - transform`} />
                         <div className="flex items-center justify-between relative z-10">
                             <div>
                                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</p>
-                                <h3 className={`text-2xl font-black mt-1 ${stat.secondary ? 'text-green-600' : 'text-slate-900'}`}>{stat.value}</h3>
+                                <h3 className={`text - 2xl font - black mt - 1 ${stat.secondary ? 'text-green-600' : 'text-slate-900'} `}>{stat.value}</h3>
                             </div>
-                            <div className={`h-12 w-12 bg-${stat.color}-50 text-${stat.color}-600 rounded-xl flex items-center justify-center`}>
+                            <div className={`h - 12 w - 12 bg - ${stat.color} -50 text - ${stat.color} -600 rounded - xl flex items - center justify - center`}>
                                 <stat.icon className="h-6 w-6" />
                             </div>
                         </div>
@@ -244,7 +244,7 @@ const Attendance: React.FC = () => {
                                     let duration = '-';
                                     if (checkOutTime) {
                                         const diff = Math.floor((checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60));
-                                        duration = `${Math.floor(diff / 60)}h ${diff % 60}m`;
+                                        duration = `${Math.floor(diff / 60)}h ${diff % 60} m`;
                                     }
 
                                     return (
