@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
     Users,
@@ -17,7 +17,8 @@ import {
     UserCheck,
     Utensils,
     Zap,
-    Target as TargetIcon
+    Target as TargetIcon,
+    LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,7 +27,14 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
     const location = useLocation();
-    const { user } = useAuth();
+    const navigate = useNavigate();
+    const { user, logout } = useAuth();
+
+    const handleLogout = async () => {
+        await logout();
+        navigate('/login');
+        if (onClose) onClose();
+    };
 
     const navigation = [
         { name: 'Dashboard', href: '/', icon: LayoutDashboard, color: 'text-indigo-400' },
@@ -128,6 +136,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onClose }) => {
                         </div>
                     </div>
                 </div>
+                {/* Logout Button for Mobile/Convenience */}
+                <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-red-500/10 border border-red-500/20 rounded-[18px] text-[10px] font-black uppercase tracking-[0.1em] text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95 group"
+                >
+                    <LogOut className="h-3.5 w-3.5 group-hover:rotate-12 transition-transform" />
+                    <span>Secure Logout</span>
+                </button>
                 <p className="text-[7px] font-bold text-slate-700 text-center mt-4 uppercase tracking-[0.3em]">GymPro Admin v1.0</p>
             </div>
         </div>
