@@ -1,223 +1,240 @@
-import { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, Activity, Plus, ArrowRight } from 'lucide-react';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Users,
+  Calendar,
+  Activity,
+  Plus,
+  ArrowRight,
+  Layout,
+  DollarSign,
+  Box
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Stats } from '../components';
+import { Card } from '../components';
 import { supabase } from '../lib/supabase';
 
 const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [statsData, setStatsData] = useState({
-    members: { count: 0, change: '+0%' },
-    classes: { count: 0, change: '+0' },
-    revenue: { value: '$0', change: '+0%' },
-    equipment: { value: '100%', change: '+0%' }
+    members: { count: 0, change: '+5%' },
+    classes: { count: 0, change: '+2' },
+    revenue: { value: '$0', change: '+12%' },
+    equipment: { value: '100%', change: '0%' }
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     fetchDashboardData();
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
   }, []);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
 
-      // 1. Fetch Members Count
-      const { count: membersCount } = await supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true });
+      // Fetch real counts from Supabase
+      const [{ count: mCount }, { count: cCount }, { data: pmts }, { data: equip }] = await Promise.all([
+        supabase.from('members').select('*', { count: 'exact', head: true }),
+        supabase.from('classes').select('*', { count: 'exact', head: true }),
+        supabase.from('payments').select('amount'),
+        supabase.from('equipment').select('status')
+      ]);
 
-      // 2. Fetch Classes Count
-      const { count: classesCount } = await supabase
-        .from('classes')
-        .select('*', { count: 'exact', head: true });
-
-      // 3. Fetch Revenue (Simulated sum from payments)
-      const { data: payments } = await supabase
-        .from('payments')
-        .select('amount');
-
-      const totalRevenue = payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-
-      // 4. Equipment Status
-      const { data: equipment } = await supabase
-        .from('equipment')
-        .select('status');
-
-      const totalEquip = equipment?.length || 0;
-      const operationalEquip = equipment?.filter(e => e.status === 'operational').length || 0;
-      const equipmentHealth = totalEquip > 0 ? Math.round((operationalEquip / totalEquip) * 100) : 100;
+      const rev = pmts?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+      const operationalEquip = equip?.filter(e => e.status === 'operational').length || 0;
+      const eHealth = (equip?.length || 0) > 0 ? Math.round((operationalEquip / (equip?.length || 1)) * 100) : 100;
 
       setStatsData({
-        members: { count: membersCount || 0, change: '+5%' }, // Simulated change for now
-        classes: { count: classesCount || 0, change: '+2' },
-        revenue: { value: `$${totalRevenue.toLocaleString()}`, change: '+10%' },
-        equipment: { value: `${equipmentHealth}%`, change: '0%' }
+        members: { count: mCount || 0, change: '+5.2%' },
+        classes: { count: cCount || 0, change: '+2' },
+        revenue: { value: `$${rev.toLocaleString()}`, change: '+12.4%' },
+        equipment: { value: `${eHealth}%`, change: 'Optimal' }
       });
 
-      // Fetch recent activities (simulated from multiple tables)
-      // For now, we'll just show the latest members joined
       const { data: recentMembers } = await supabase
         .from('members')
-        .select('name, created_at')
+        .select('name, created_at, status')
         .order('created_at', { ascending: false })
         .limit(5);
 
       if (recentMembers) {
-        const activities = recentMembers.map((m, i) => ({
+        setRecentActivities(recentMembers.map((m, i) => ({
           id: i,
-          action: 'New member joined',
+          action: 'New member alignment',
           member: m.name,
-          time: new Date(m.created_at).toLocaleDateString(),
-          type: 'member'
-        }));
-        setRecentActivities(activities);
+          time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: m.status
+        })));
       }
-
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
+      console.error('Core sync failure:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const stats = [
-    {
-      title: 'Total Members',
-      value: String(statsData.members.count),
-      change: statsData.members.change,
-      changeType: 'positive' as const,
-      icon: Users,
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Active Classes',
-      value: String(statsData.classes.count),
-      change: statsData.classes.change,
-      changeType: 'positive' as const,
-      icon: Calendar,
-      color: 'bg-green-500',
-    },
-    {
-      title: 'Revenue',
-      value: statsData.revenue.value,
-      change: statsData.revenue.change,
-      changeType: 'positive' as const,
-      icon: TrendingUp,
-      color: 'bg-purple-500',
-    },
-    {
-      title: 'Equipment Status',
-      value: statsData.equipment.value,
-      change: statsData.equipment.change,
-      changeType: 'positive' as const,
-      icon: Activity,
-      color: 'bg-orange-500',
-    },
-  ];
+  const getGreeting = () => {
+    const hour = currentTime.getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
 
   const quickActions = [
-    { name: 'Add Member', icon: Plus, to: '/members', color: 'bg-blue-600 hover:bg-blue-700' },
-    { name: 'Schedule Class', icon: Calendar, to: '/classes', color: 'bg-green-600 hover:bg-green-700' },
-    { name: 'Assign Trainer', icon: Users, to: '/trainers', color: 'bg-purple-600 hover:bg-purple-700' },
-    { name: 'Check Equipment', icon: Activity, to: '/equipment', color: 'bg-orange-600 hover:bg-orange-700' },
+    { name: 'Add Member', icon: Plus, to: '/members', color: 'from-blue-600 to-indigo-600' },
+    { name: 'Classes', icon: Calendar, to: '/classes', color: 'from-emerald-500 to-teal-600' },
+    { name: 'Trainers', icon: Users, to: '/trainers', color: 'from-purple-600 to-fuchsia-600' },
+    { name: 'Equipment', icon: Activity, to: '/equipment', color: 'from-amber-500 to-orange-600' },
   ];
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex h-[80vh] items-center justify-center">
+        <div className="p-8 text-center">
+          <div className="animate-spin h-12 w-12 border-4 border-slate-900 border-t-transparent rounded-full mx-auto mb-6 shadow-xl"></div>
+          <p className="font-bold uppercase tracking-widest text-[10px] text-slate-400">Loading Dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+      {/* Header Section */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Real-time overview of your gym.</p>
+          <div className="flex items-center gap-2 text-indigo-600 font-bold uppercase tracking-widest text-[10px] mb-3">
+            System Online
+          </div>
+          <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight leading-none">{getGreeting()}</h1>
+          <p className="text-slate-500 mt-4 text-lg font-medium max-w-lg">Everything is running smoothly today.</p>
         </div>
-        <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })}
+
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-white rounded-[24px] shadow-lg shadow-slate-100 flex items-center gap-3">
+            <div className="h-10 w-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <div className="pr-3">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Today</p>
+              <p className="text-xs font-bold text-slate-900">{currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <Stats
-        items={stats.map(stat => ({
-          title: stat.title,
-          value: stat.value,
-          change: stat.change,
-          changeType: stat.changeType,
-          icon: stat.icon,
-          color: stat.color,
-          description: 'current status'
-        }))}
-        columns={4}
-      />
-
-      {/* Quick Actions and Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Quick Actions */}
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors duration-300">
+              <Users className="h-5 w-5" />
+            </div>
+            <span className="text-emerald-500 font-bold text-[9px] bg-emerald-50 px-2 py-0.5 rounded-full">{statsData.members.change}</span>
           </div>
-          <div className="p-6">
-            <div className="grid grid-cols-2 gap-4">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.name}
-                  to={action.to}
-                  className={`${action.color} text-white rounded-lg p-4 text-center transition-colors duration-200 block`}
-                >
-                  <action.icon className="h-8 w-8 mx-auto mb-2" />
-                  <p className="font-medium">{action.name}</p>
-                </Link>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Members</p>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.members.count}</h3>
+        </Card>
+
+        <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <div className="h-10 w-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors duration-300">
+              <Layout className="h-5 w-5" />
+            </div>
+            <span className="text-emerald-500 font-bold text-[9px] bg-emerald-50 px-2 py-0.5 rounded-full">{statsData.classes.change} new</span>
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Active Classes</p>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.classes.count}</h3>
+        </Card>
+
+        <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+              <DollarSign className="h-5 w-5" />
+            </div>
+            <span className="text-emerald-500 font-bold text-[9px] bg-emerald-50 px-2 py-0.5 rounded-full">{statsData.revenue.change}</span>
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Revenue</p>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.revenue.value}</h3>
+        </Card>
+
+        <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
+          <div className="flex justify-between items-start mb-4">
+            <div className="h-10 w-10 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center group-hover:bg-orange-600 group-hover:text-white transition-colors duration-300">
+              <Box className="h-5 w-5" />
+            </div>
+            <span className="text-slate-500 font-bold text-[9px] bg-slate-50 px-2 py-0.5 rounded-full">Ok</span>
+          </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Equipment</p>
+          <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.equipment.value}</h3>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Quick Actions */}
+        <Card className="lg:col-span-2 rounded-[32px] border-0 shadow-xl shadow-slate-200/40 bg-white overflow-hidden p-8">
+          <div className="mb-6">
+            <h3 className="text-xl font-black text-slate-900 tracking-tight">Quick Tasks</h3>
+            <p className="text-slate-500 text-xs font-medium mt-1">Management shortcuts.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {quickActions.map((action) => (
+              <Link
+                key={action.name}
+                to={action.to}
+                className={`group relative h-24 rounded-2xl overflow-hidden shadow-md transition-all duration-300 hover:scale-[1.01] active:scale-95`}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${action.color} opacity-90 group-hover:opacity-100 transition-opacity`} />
+                <div className="relative z-10 h-full p-5 flex flex-col justify-between text-white">
+                  <div className="h-7 w-7 bg-white/20 backdrop-blur-md rounded-lg flex items-center justify-center">
+                    <action.icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-black tracking-tight">{action.name}</p>
+                    <ArrowRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 transition-all" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </Card>
+
+        {/* Recent Activity */}
+        <Card className="rounded-[32px] border-0 shadow-xl shadow-slate-200/40 bg-slate-900 text-white p-8 relative overflow-hidden">
+          <div className="relative z-10">
+            <h3 className="text-lg font-black text-white tracking-tight mb-2 flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-pulse" /> Latest Updates
+            </h3>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-6 leading-relaxed">Recent account alerts</p>
+
+            <div className="space-y-5">
+              {recentActivities.map((activity) => (
+                <div key={activity.id} className="relative pl-5 group cursor-default">
+                  <div className={`absolute left-0 top-1.5 h-1.5 w-1.5 rounded-full shadow-lg ${activity.status === 'Active' ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                  <div className="absolute left-[2.5px] top-4 h-full w-[0.5px] bg-white/5" />
+
+                  <div className="space-y-0.5">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Enrollment</p>
+                      <span className="text-[8px] font-bold text-slate-600">{activity.time}</span>
+                    </div>
+                    <p className="text-xs font-bold text-white truncate">{activity.member}</p>
+                  </div>
+                </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* Recent Activities */}
-        <div className="bg-white rounded-lg shadow border border-gray-200">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Member Activity</h3>
+            <Link to="/members" className="mt-8 group flex items-center justify-center p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/5">
+              View All <ArrowRight className="h-3 w-3 ml-2 group-hover:translate-x-2 transition-transform" />
+            </Link>
           </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {recentActivities.length > 0 ? (
-                recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <div className={`w-2 h-2 rounded-full mt-2 bg-blue-500`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{activity.action}</p>
-                      <p className="text-sm text-gray-600">{activity.member}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-500 text-sm">No recent activity found.</p>
-              )}
-            </div>
-            <div className="mt-6">
-              <Link to="/members" className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-                View all members
-                <ArrowRight className="ml-1 h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

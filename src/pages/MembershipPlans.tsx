@@ -1,19 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-    ShieldCheck,
     Plus,
     Check,
     X,
     Edit,
     Trash2,
-    DollarSign,
-    Clock,
     Zap,
     Star,
-    Crown
+    Crown,
+    ArrowRight,
+    Award,
+    ShieldCheck
 } from 'lucide-react';
-import { Button } from '../components';
+import { Button, Card } from '../components';
 import { supabase } from '../lib/supabase';
 
 interface MembershipPlan {
@@ -54,8 +54,8 @@ const MembershipPlans: React.FC = () => {
 
             if (error) throw error;
             setPlans(data || []);
-        } catch (error) {
-            console.error('Error fetching plans:', error);
+        } catch (err) {
+            console.error('Error fetching plans:', err);
         } finally {
             setLoading(false);
         }
@@ -79,8 +79,8 @@ const MembershipPlans: React.FC = () => {
             setShowAddModal(false);
             setNewPlan({ name: '', price: '', duration: '1 month', features: [''], status: 'active' });
             fetchPlans();
-        } catch (error: any) {
-            alert(`Failed to create plan: ${error.message}`);
+        } catch (error: unknown) {
+            alert(`Failed to create plan: ${(error as Error).message}`);
         } finally {
             setSubmitLoading(false);
         }
@@ -92,146 +92,169 @@ const MembershipPlans: React.FC = () => {
             const { error } = await supabase.from('membership_plans').delete().eq('id', id);
             if (error) throw error;
             fetchPlans();
-        } catch (error: any) {
-            alert(`Delete failed: ${error.message}`);
+        } catch (error: unknown) {
+            alert(`Failed to delete plan: ${(error as Error).message}`);
         }
-    };
-
-    const addFeatureInput = () => {
-        setNewPlan({ ...newPlan, features: [...newPlan.features, ''] });
-    };
-
-    const removeFeatureInput = (index: number) => {
-        const updated = newPlan.features.filter((_, i) => i !== index);
-        setNewPlan({ ...newPlan, features: updated });
-    };
-
-    const updateFeatureInput = (index: number, value: string) => {
-        const updated = [...newPlan.features];
-        updated[index] = value;
-        setNewPlan({ ...newPlan, features: updated });
     };
 
     const getPlanIcon = (name: string) => {
         const n = name.toLowerCase();
-        if (n.includes('pro') || n.includes('premium')) return Star;
-        if (n.includes('gold') || n.includes('vip') || n.includes('annual')) return Crown;
+        if (n.includes('premium') || n.includes('gold')) return Crown;
+        if (n.includes('pro') || n.includes('silver')) return Star;
+        if (n.includes('basic') || n.includes('bronze')) return Award;
         return Zap;
     };
 
+    if (loading) {
+        return (
+            <div className="h-[60vh] flex items-center justify-center">
+                <ShieldCheck className="h-10 w-10 text-slate-900 animate-pulse" />
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="space-y-10 pb-20 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Membership Tiers</h1>
-                    <p className="text-gray-600">Design flexible plans and pricing models for your members</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Membership Plans</h1>
+                    <p className="text-slate-500 font-medium mt-1">Manage gym membership tiers and pricing.</p>
                 </div>
-                <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
-                    Create New Plan
-                </Button>
+                <Button variant="primary" className="rounded-xl px-6 h-12" icon={Plus} onClick={() => setShowAddModal(true)}>New Plan</Button>
             </div>
 
-            {loading ? (
-                <div className="py-20 text-center text-gray-400">Loading plans...</div>
-            ) : plans.length === 0 ? (
-                <div className="py-20 text-center bg-white rounded-2xl border border-dashed border-gray-200">
-                    <ShieldCheck className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-                    <p className="text-gray-500 font-medium">No membership tiers configured yet.</p>
-                    <Button variant="outline" className="mt-4" onClick={() => setShowAddModal(true)}>Add Your First Tier</Button>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {plans.map((plan) => {
-                        const Icon = getPlanIcon(plan.name);
-                        return (
-                            <div key={plan.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
-                                <div className="p-8">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div className="h-12 w-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Icon className="h-6 w-6" />
-                                        </div>
-                                        <div className="flex space-x-1">
-                                            <button className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-lg transition-colors"><Edit className="h-4 w-4" /></button>
-                                            <button onClick={() => handleDeletePlan(plan.id)} className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-lg transition-colors"><Trash2 className="h-4 w-4" /></button>
-                                        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {plans.map((plan) => {
+                    const Icon = getPlanIcon(plan.name);
+                    return (
+                        <Card key={plan.id} className="rounded-3xl border-0 shadow-xl shadow-slate-200/40 bg-white overflow-hidden flex flex-col group hover:-translate-y-1 transition-all">
+                            <div className="p-8 pb-0">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="h-12 w-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                        <Icon className="h-6 w-6" />
                                     </div>
-
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                                    <div className="flex items-baseline mb-6">
-                                        <span className="text-4xl font-extrabold text-gray-900">${plan.price}</span>
-                                        <span className="text-gray-500 ml-2 font-medium">/ {plan.duration}</span>
+                                    <div className="flex gap-2">
+                                        <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit className="h-4 w-4" /></button>
+                                        <button onClick={() => handleDeletePlan(plan.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
                                     </div>
-
-                                    <div className="space-y-4 mb-8 flex-grow">
-                                        {plan.features.map((feature, idx) => (
-                                            <div key={idx} className="flex items-center text-gray-600 text-sm">
-                                                <div className="h-5 w-5 bg-green-50 text-green-500 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                                    <Check className="h-3 w-3" />
-                                                </div>
-                                                {feature}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <Button variant="outline" className="w-full rounded-2xl border-gray-200 text-gray-900 hover:bg-gray-50 group-hover:bg-slate-900 group-hover:text-white group-hover:border-slate-900 transition-all">
-                                        Selected by {Math.floor(Math.random() * 40)} Members
-                                    </Button>
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 mb-1">{plan.name}</h3>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-3xl font-black text-slate-900 tracking-tight">₹{plan.price}</span>
+                                    <span className="text-slate-400 font-bold text-xs uppercase tracking-widest">/ {plan.duration}</span>
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
-            )}
 
-            {/* Add Plan Modal */}
+                            <div className="p-8 flex-1">
+                                <ul className="space-y-3">
+                                    {plan.features.map((feature, idx) => (
+                                        <li key={idx} className="flex items-center gap-3 text-sm font-bold text-slate-600">
+                                            <div className="h-5 w-5 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                                                <Check className="h-3 w-3" />
+                                            </div>
+                                            {feature}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            <div className="p-8 pt-0 mt-auto">
+                                <Button variant="outline" className="w-full rounded-xl group-hover:bg-slate-900 group-hover:text-white transition-all" icon={ArrowRight}>Plan Details</Button>
+                            </div>
+                        </Card>
+                    );
+                })}
+            </div>
+
             {showAddModal && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl max-w-2xl w-full p-10 shadow-2xl relative max-h-[90vh] overflow-y-auto">
-                        <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-600 outline-none"><X className="h-6 w-6" /></button>
-                        <h2 className="text-3xl font-bold text-gray-900 mb-8">New Membership Tier</h2>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+                    <Card className="w-full max-w-lg bg-white rounded-3xl border-0 shadow-3xl p-10 relative">
+                        <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+                            <X className="h-6 w-6 text-slate-400" />
+                        </button>
+                        <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Create Plan</h3>
+                        <p className="text-slate-500 font-medium mb-10 text-sm">Add a new membership tier.</p>
 
-                        <form onSubmit={handleCreatePlan} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Plan Name</label>
-                                    <input required placeholder="e.g. Platinum Annual" className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none focus:ring-4 focus:ring-blue-100" value={newPlan.name} onChange={e => setNewPlan({ ...newPlan, name: e.target.value })} />
+                        <form onSubmit={handleCreatePlan} className="space-y-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Plan Name</label>
+                                    <input
+                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                                        placeholder="e.g. Gold"
+                                        value={newPlan.name}
+                                        onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
+                                        required
+                                    />
                                 </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Price ($)</label>
-                                        <input required type="number" placeholder="99.99" className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none focus:ring-4 focus:ring-blue-100" value={newPlan.price} onChange={e => setNewPlan({ ...newPlan, price: e.target.value })} />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-2">Duration</label>
-                                        <select className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50/50 outline-none focus:ring-4 focus:ring-blue-100" value={newPlan.duration} onChange={e => setNewPlan({ ...newPlan, duration: e.target.value })}>
-                                            <option value="1 month">Monthly</option>
-                                            <option value="3 months">Quarterly</option>
-                                            <option value="annual">Annual</option>
-                                        </select>
-                                    </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                                        placeholder="2999"
+                                        value={newPlan.price}
+                                        onChange={(e) => setNewPlan({ ...newPlan, price: e.target.value })}
+                                        required
+                                    />
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-2">Features & Perks</label>
-                                    <div className="space-y-3">
-                                        {newPlan.features.map((f, i) => (
-                                            <div key={i} className="flex gap-2">
-                                                <input required placeholder="Access to sauna..." className="flex-1 p-2 text-sm border border-gray-200 rounded-lg bg-gray-50/50 outline-none" value={f} onChange={e => updateFeatureInput(i, e.target.value)} />
-                                                <button type="button" onClick={() => removeFeatureInput(i)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><X className="h-4 w-4" /></button>
-                                            </div>
-                                        ))}
-                                        <button type="button" onClick={addFeatureInput} className="text-blue-600 text-sm font-bold flex items-center hover:underline"><Plus className="h-4 w-4 mr-1" /> Add Feature</button>
-                                    </div>
-                                </div>
-                                <div className="pt-4 flex gap-4">
-                                    <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                                    <Button type="submit" variant="primary" className="flex-1 rounded-xl shadow-lg shadow-blue-200" loading={submitLoading}>Save Plan</Button>
-                                </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Duration</label>
+                                <select
+                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer text-slate-900"
+                                    value={newPlan.duration}
+                                    onChange={(e) => setNewPlan({ ...newPlan, duration: e.target.value })}
+                                >
+                                    <option value="1 month">1 Month</option>
+                                    <option value="3 months">3 Months</option>
+                                    <option value="6 months">6 Months</option>
+                                    <option value="1 year">1 Year</option>
+                                </select>
                             </div>
+
+                            <div className="space-y-3">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Features</label>
+                                {newPlan.features.map((feature, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <input
+                                            className="flex-1 px-6 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                                            placeholder="Feature"
+                                            value={feature}
+                                            onChange={(e) => {
+                                                const updated = [...newPlan.features];
+                                                updated[idx] = e.target.value;
+                                                setNewPlan({ ...newPlan, features: updated });
+                                            }}
+                                        />
+                                        {idx > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const updated = [...newPlan.features];
+                                                    updated.splice(idx, 1);
+                                                    setNewPlan({ ...newPlan, features: updated });
+                                                }}
+                                                className="p-3 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setNewPlan({ ...newPlan, features: [...newPlan.features, ''] })}
+                                    className="text-[10px] font-black text-indigo-600 uppercase tracking-widest ml-1 hover:text-indigo-700 transition-colors"
+                                >
+                                    + Add Feature
+                                </button>
+                            </div>
+
+                            <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]" loading={submitLoading}>Save Plan</Button>
                         </form>
-                    </div>
+                    </Card>
                 </div>
             )}
         </div>

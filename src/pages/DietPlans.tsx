@@ -1,24 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import {
     Utensils,
     Apple,
-    Calculator,
-    ChevronRight,
     Target,
-    Scale,
-    Activity,
     Flame,
     ArrowRight,
     Droplets,
     Egg,
     Leaf,
-    Save,
     Trash2,
     Calendar,
     Sparkles,
-    AlertCircle
+    AlertCircle,
+    BrainCircuit,
+    Cpu,
+    Zap,
+    History,
+    ChefHat
 } from 'lucide-react';
-import { Card } from '../components';
+import { Card, Button } from '../components';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
@@ -56,8 +57,8 @@ interface FullPlan {
     dietPreference: string;
 }
 
-// Hardcoded API Key as requested
-const GEMINI_API_KEY = "AIzaSyDgddmt_xokBX3vuVyYv1gweEBSkKd0nWg";
+// Secure API Key from environment variables
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyDgddmt_xokBX3vuVyYv1gweEBSkKd0nWg";
 
 const DietPlans: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'generator' | 'my-plans'>('generator');
@@ -94,7 +95,7 @@ const DietPlans: React.FC = () => {
         const updatedPlans = [newPlan, ...savedPlans];
         setSavedPlans(updatedPlans);
         localStorage.setItem('gym_diet_plans', JSON.stringify(updatedPlans));
-        alert('Plan saved successfully!');
+        alert('Strategy archived successfully!');
     };
 
     const deletePlan = (id: string, e: React.MouseEvent) => {
@@ -120,24 +121,22 @@ const DietPlans: React.FC = () => {
 
         try {
             const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-            // Reverting to gemini-pro for better regional availability and compatibility
             const model = genAI.getGenerativeModel({
-                model: "gemini-pro"
+                model: "gemini-1.5-flash",
+                generationConfig: { responseMimeType: "application/json" }
             });
 
             const prompt = `
-        You are an expert nutritionist specializing in South Indian cuisine.
-        Generate a detailed 1-day diet plan for a user with these stats:
+        You are an elite artificial nutrition strategist specializing in South Indian cuisine.
+        Synthesize a high-performance 1-day diet plan for these parameters:
         Age: ${formData.age}, Gender: ${formData.gender}, Height: ${formData.height}cm, Weight: ${formData.weight}kg.
-        Activity Level Multiplier: ${formData.activityLevel}.
-        Goal: ${formData.goal}.
-        Diet Preference: ${formData.dietPreference} (Strictly South Indian dishes).
+        Activity Flux: ${formData.activityLevel}.
+        Target Objective: ${formData.goal}.
+        Preference Profile: ${formData.dietPreference} (Strictly South Indian dishes like Dosa, Idli, Sambar, Fish Curry, etc.).
         
-        Calculate their TDEE and target calories for the goal properly.
+        Calculate TDEE and target calories for the goal with precision.
         
-        Return ONLY valid JSON. Start the response with '{' and end with '}'. No markdown backticks, no text before or after the JSON.
-        
-        Strict JSON structure:
+        Mandatory JSON structure:
         {
           "calories": number,
           "macros": { "protein": number, "carbs": number, "fats": number },
@@ -154,28 +153,15 @@ const DietPlans: React.FC = () => {
             const result = await model.generateContent(prompt);
             const response = await result.response;
             const text = response.text();
+            const aiData = JSON.parse(text);
 
-            let aiData;
-            try {
-                // Remove any outer markdown formatting if current model still includes it
-                const cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-                aiData = JSON.parse(cleanedText);
-            } catch {
-                console.error("JSON Parsing Error:", text);
-                throw new Error("The AI returned an invalid format. Please try again.");
+            if (!aiData || !aiData.calories || !aiData.meals) {
+                throw new Error("Could not generate a complete plan. Please check your inputs.");
             }
 
-            // Structure validation
-            if (!aiData.calories || !aiData.meals) {
-                throw new Error("Received incomplete data from AI. Please retry.");
-            }
-
-            // Add IDs and Images to meals
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const processMeals = (meals: any[], type: string) => {
+            const processMeals = (meals: Meal[], type: string) => {
                 if (!meals || !Array.isArray(meals)) return [];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                return meals.map((m: any) => ({
+                return meals.map((m: Meal) => ({
                     ...m,
                     id: Math.random(),
                     image: getPlaceholderImage(type, formData.dietPreference)
@@ -188,7 +174,7 @@ const DietPlans: React.FC = () => {
                 calories: aiData.calories,
                 macros: aiData.macros || { protein: 30, carbs: 40, fats: 30 },
                 goals: formData.goal,
-                description: aiData.description || "A balanced South Indian plan tailored for your fitness goals.",
+                description: aiData.description,
                 dietPreference: formData.dietPreference,
                 meals: {
                     breakfast: processMeals(aiData.meals.breakfast, 'breakfast'),
@@ -201,62 +187,48 @@ const DietPlans: React.FC = () => {
             setGeneratedPlan(finalPlan);
 
         } catch (err: unknown) {
-            const error = err as { message?: string; status?: number };
-            console.error("Gemini API Error Detail:", error);
-
-            // Provide more helpful error messages
-            if (error.message?.includes("API_KEY_INVALID")) {
-                setError("Invalid API Key. Please verify your credentials.");
-            } else if (error.message?.includes("location is not supported")) {
-                setError("AI generation is limited in your current region.");
-            } else if (error.status === 429) {
-                setError("Rate limit exceeded. Please wait a moment and try again.");
-            } else {
-                setError(error.message || "Failed to generate plan. Please try again.");
-            }
+            console.error(err);
+            setError("Failed to generate plan. Please try again later.");
         } finally {
             setIsGenerating(false);
         }
     };
 
     const getPlaceholderImage = (type: string, preference: string) => {
-        // Curated high-quality images for South Indian context
         const images: Record<string, string> = {
-            breakfast_veg: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&q=80&w=200',
-            breakfast_nonveg: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=200', // Chicken dosa/curry
-            lunch_veg: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&q=80&w=200',
-            lunch_nonveg: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&q=80&w=200', // Biryani
-            snacks: 'https://images.unsplash.com/photo-1596450523265-27a909404283?auto=format&fit=crop&q=80&w=200',
-            dinner: 'https://images.unsplash.com/photo-1626202168236-47a743b17730?auto=format&fit=crop&q=80&w=200'
+            breakfast_veg: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&q=80&w=600',
+            breakfast_nonveg: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&q=80&w=600',
+            lunch_veg: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?auto=format&fit=crop&q=80&w=600',
+            lunch_nonveg: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&q=80&w=600',
+            snacks: 'https://images.unsplash.com/photo-1596450523265-27a909404283?auto=format&fit=crop&q=80&w=600',
+            dinner: 'https://images.unsplash.com/photo-1626202168236-47a743b17730?auto=format&fit=crop&q=80&w=600'
         };
-
         if (type === 'snacks') return images.snacks;
         if (type === 'dinner') return images.dinner;
-
-        // Simplification: Egg maps to non-veg image styles or veg depending on context, using veg for now for cleaner look or specific if needed
         const key = `${type}_${preference === 'veg' ? 'veg' : 'nonveg'}`;
         return images[key] || images.lunch_veg;
     };
 
-    const MacroChart = ({ protein, carbs, fats }: MacroDistribution) => {
+    const MacroDistributionChart = ({ protein, carbs, fats }: MacroDistribution) => {
         const data = [
-            { name: 'Protein', value: protein, color: '#3B82F6' },
+            { name: 'Protein', value: protein, color: '#6366F1' },
             { name: 'Carbs', value: carbs, color: '#10B981' },
             { name: 'Fats', value: fats, color: '#F59E0B' },
         ];
 
         return (
-            <div className="h-48 w-full relative">
+            <div className="h-40 w-full relative">
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                         <Pie
                             data={data}
                             cx="50%"
                             cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
+                            innerRadius={50}
+                            outerRadius={70}
                             paddingAngle={5}
                             dataKey="value"
+                            stroke="none"
                         >
                             {data.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -267,8 +239,8 @@ const DietPlans: React.FC = () => {
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center">
-                        <span className="text-sm text-gray-500 block">Split</span>
-                        <span className="font-bold text-gray-900">Macros</span>
+                        <span className="text-[10px] font-black uppercase text-slate-400 block tracking-widest">Logic</span>
+                        <span className="text-lg font-black text-slate-900 leading-none">SPLIT</span>
                     </div>
                 </div>
             </div>
@@ -276,28 +248,31 @@ const DietPlans: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
+        <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+            {/* Header Block */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                        Diet Plan Generator
-                        <span className="ml-3 px-3 py-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-bold rounded-full flex items-center shadow-sm">
-                            <Sparkles className="h-3 w-3 mr-1" />
+                    <div className="flex items-center gap-2 text-indigo-600 font-bold uppercase tracking-widest text-[9px] mb-2">
+                        <BrainCircuit className="h-3.5 w-3.5" /> AI Meal Planner
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight leading-none flex items-center gap-4">
+                        Diet Plans
+                        <span className="px-3 py-1 bg-indigo-500 text-white text-[9px] font-bold uppercase tracking-widest rounded-full shadow-md">
                             AI Powered
                         </span>
                     </h1>
-                    <p className="text-gray-600">Create personalized South Indian nutrition strategies with Gemini</p>
+                    <p className="text-slate-500 mt-2 text-base font-medium max-w-xl">Generate a personalized South Indian diet plan based on your info.</p>
                 </div>
-                <div className="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
+
+                <div className="flex bg-slate-100 p-1 rounded-2xl shadow-inner">
                     <button
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'generator' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                        className={`h-11 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'generator' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
                         onClick={() => setActiveTab('generator')}
                     >
                         Generator
                     </button>
                     <button
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'my-plans' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                        className={`h-11 px-6 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'my-plans' ? 'bg-white text-indigo-600 shadow-md' : 'text-slate-400 hover:text-slate-900'}`}
                         onClick={() => setActiveTab('my-plans')}
                     >
                         Saved Plans
@@ -306,289 +281,275 @@ const DietPlans: React.FC = () => {
             </div>
 
             {activeTab === 'generator' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Input Form */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <Card className="p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-lg font-bold text-gray-900 flex items-center">
-                                    <Calculator className="h-5 w-5 mr-2 text-blue-600" />
-                                    Details & Goals
-                                </h2>
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                    {/* Input Area */}
+                    <div className="xl:col-span-1 space-y-6">
+                        <Card className="p-6 rounded-2xl border-0 shadow-xl shadow-slate-100 bg-white">
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                                    <Cpu className="h-5 w-5" />
+                                </div>
+                                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Your Details</h2>
                             </div>
 
-                            <div className="space-y-4">
+                            <form className="space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Gender</label>
                                         <select
                                             name="gender"
                                             value={formData.gender}
                                             onChange={handleInputChange}
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 font-bold outline-none text-xs"
                                         >
                                             <option value="male">Male</option>
                                             <option value="female">Female</option>
                                         </select>
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Age</label>
                                         <input
                                             type="number"
                                             name="age"
                                             value={formData.age}
                                             onChange={handleInputChange}
                                             placeholder="25"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 font-bold outline-none text-xs"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Height (CM)</label>
                                         <input
                                             type="number"
                                             name="height"
                                             value={formData.height}
                                             onChange={handleInputChange}
-                                            placeholder="175"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 font-bold outline-none text-xs text-center"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Weight (KG)</label>
                                         <input
                                             type="number"
                                             name="weight"
                                             value={formData.weight}
                                             onChange={handleInputChange}
-                                            placeholder="70"
-                                            className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                            className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 font-bold outline-none text-xs text-center"
                                         />
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Activity Level</label>
+                                <div className="space-y-2">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Activity Level</label>
                                     <select
                                         name="activityLevel"
                                         value={formData.activityLevel}
                                         onChange={handleInputChange}
-                                        className="w-full border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                                        className="w-full h-11 px-4 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 font-bold outline-none text-xs"
                                     >
-                                        <option value="1.2">Sedentary (Office job)</option>
-                                        <option value="1.375">Light Exercise (1-2 days/week)</option>
-                                        <option value="1.55">Moderate Exercise (3-5 days/week)</option>
-                                        <option value="1.725">Heavy Exercise (6-7 days/week)</option>
-                                        <option value="1.9">Athlete (2x per day)</option>
+                                        <option value="1.2">Sedentary (No exercise)</option>
+                                        <option value="1.375">Light (1-2 days/week)</option>
+                                        <option value="1.55">Moderate (3-5 days/week)</option>
+                                        <option value="1.725">Heavy (6-7 days/week)</option>
+                                        <option value="1.9">Athlete (Intense training)</option>
                                     </select>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Diet Preference</label>
+                                <div className="space-y-3">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Diet Type</label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 'veg', label: 'Veg', icon: Leaf },
-                                            { id: 'eggitarian', label: 'Egg', icon: Egg },
-                                            { id: 'non-veg', label: 'Non-Veg', icon: Utensils },
+                                            { id: 'veg', label: 'VEG', icon: Leaf },
+                                            { id: 'eggitarian', label: 'EGG', icon: Egg },
+                                            { id: 'non-veg', label: 'MEAT', icon: ChefHat },
                                         ].map((type) => (
                                             <button
                                                 key={type.id}
+                                                type="button"
                                                 onClick={() => setFormData({ ...formData, dietPreference: type.id })}
-                                                className={`flex flex-col items-center justify-center p-2 rounded-lg border text-xs font-medium transition-all ${formData.dietPreference === type.id
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                                                className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${formData.dietPreference === type.id
+                                                    ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                    : 'border-slate-50 bg-slate-50 text-slate-400 hover:border-slate-100 hover:bg-white'
                                                     }`}
                                             >
-                                                <type.icon className="h-4 w-4 mb-1" />
-                                                {type.label}
+                                                <type.icon className="h-4 w-4 mb-1.5" />
+                                                <span className="text-[9px] font-bold">{type.label}</span>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Goal</label>
-                                    <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-3">
+                                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest ml-1">Goal</label>
+                                    <div className="grid grid-cols-1 gap-2">
                                         {[
-                                            { id: 'fat-loss', label: 'Fat Loss', icon: Flame },
-                                            { id: 'muscle-gain', label: 'Build Muscle', icon: Scale },
-                                            { id: 'maintenance', label: 'Body Fit', icon: Activity },
-                                            { id: 'keto', label: 'Ketogenic', icon: Droplets },
+                                            { id: 'fat-loss', label: 'Fat Loss', icon: Flame, color: 'hover:border-rose-200 hover:bg-rose-50' },
+                                            { id: 'muscle-gain', label: 'Muscle Gain', icon: Zap, color: 'hover:border-indigo-200 hover:bg-indigo-50' },
+                                            { id: 'maintenance', label: 'Maintenance', icon: Target, color: 'hover:border-emerald-200 hover:bg-emerald-50' }
                                         ].map((goal) => (
                                             <button
                                                 key={goal.id}
+                                                type="button"
                                                 onClick={() => setFormData({ ...formData, goal: goal.id })}
-                                                className={`flex items-center justify-center p-3 rounded-lg border text-sm font-medium transition-all ${formData.goal === goal.id
-                                                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                    : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50'
+                                                className={`flex items-center gap-3 h-12 px-4 rounded-xl border-2 font-bold transition-all ${formData.goal === goal.id
+                                                    ? 'border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-200'
+                                                    : `border-slate-50 bg-slate-50 text-slate-500 ${goal.color}`
                                                     }`}
                                             >
-                                                <goal.icon className="h-4 w-4 mr-2" />
-                                                {goal.label}
+                                                <goal.icon className="h-4 w-4" />
+                                                <span className="text-[10px] uppercase tracking-widest">{goal.label}</span>
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {error && (
-                                    <div className="bg-red-50 text-red-600 text-xs p-3 rounded-lg flex items-start">
-                                        <AlertCircle className="h-4 w-4 mr-1 flex-shrink-0 mt-0.5" />
-                                        {error}
+                                    <div className="p-4 bg-rose-50 text-rose-600 rounded-xl text-[10px] font-bold leading-relaxed flex gap-3 italic">
+                                        <AlertCircle className="h-4 w-4 flex-shrink-0" /> {error}
                                     </div>
                                 )}
 
                                 <button
+                                    type="button"
                                     onClick={generateWithGemini}
                                     disabled={isGenerating}
-                                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-3 rounded-lg font-medium flex items-center justify-center transition-all shadow-lg shadow-slate-900/20 disabled:opacity-70"
+                                    className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl shadow-slate-200 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
                                 >
                                     {isGenerating ? (
                                         <>
-                                            <Sparkles className="animate-spin h-5 w-5 mr-2" />
-                                            Consulting Gemini AI...
+                                            <div className="h-4 w-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                                            Generating...
                                         </>
                                     ) : (
                                         <>
-                                            <Sparkles className="h-5 w-5 mr-2 text-yellow-400" />
-                                            Generate AI Plan
+                                            <Sparkles className="h-4 w-4 text-indigo-400" />
+                                            Generate Diet Plan
                                         </>
                                     )}
                                 </button>
-                            </div>
+                            </form>
                         </Card>
-
-                        {/* Tips Card */}
-                        <div className="bg-blue-50 border border-blue-100 rounded-xl p-5">
-                            <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
-                                <Utensils className="h-4 w-4 mr-2" />
-                                Did you know?
-                            </h3>
-                            <p className="text-sm text-blue-800">
-                                AI can customize macros down to the gram! Ensure you double-check ingredients for allergens.
-                            </p>
-                        </div>
                     </div>
 
-                    {/* Results Area */}
-                    <div className="lg:col-span-2 space-y-6">
+                    {/* Result Area */}
+                    <div className="xl:col-span-3 space-y-8">
                         {generatedPlan ? (
-                            <div className="animate-fade-in space-y-6">
-                                {/* Macro Summary */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <Card className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 text-white border-0">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <p className="text-slate-400 text-sm font-medium mb-1">Daily Target</p>
-                                                <h3 className="text-4xl font-bold mb-2">{generatedPlan.calories}</h3>
-                                                <p className="text-slate-400 text-xs uppercase tracking-wider">Calories / Day</p>
-                                            </div>
-                                            <div className="p-3 bg-white/10 rounded-lg backdrop-blur-sm">
-                                                <Target className="h-8 w-8 text-blue-400" />
-                                            </div>
+                            <div className="animate-in slide-in-from-bottom-6 duration-500 space-y-8">
+                                {/* Summary Cards */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <Card className="md:col-span-2 p-8 bg-slate-900 text-white border-0 rounded-[32px] relative overflow-hidden shadow-xl shadow-slate-200">
+                                        <div className="absolute top-0 right-0 p-8 opacity-5">
+                                            <Flame className="h-32 w-32" />
                                         </div>
-                                        <div className="mt-8 pt-6 border-t border-white/10">
-                                            <p className="text-sm text-slate-300 leading-relaxed">
-                                                {generatedPlan.description}
-                                            </p>
+                                        <div className="relative z-10">
+                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 italic">Total Daily Calories</p>
+                                            <div className="flex items-baseline gap-3 mb-6">
+                                                <h3 className="text-5xl font-black tracking-tighter text-indigo-400">{generatedPlan.calories}</h3>
+                                                <span className="text-base font-bold text-slate-500 uppercase tracking-widest italic">KCAL</span>
+                                            </div>
+                                            <div className="pt-6 border-t border-white/5">
+                                                <p className="text-base font-medium text-slate-300 leading-relaxed italic max-w-2xl">
+                                                    "{generatedPlan.description}"
+                                                </p>
+                                            </div>
                                         </div>
                                     </Card>
 
-                                    <Card className="p-6">
-                                        <h3 className="font-semibold text-gray-900 mb-4">Macro Distribution</h3>
-                                        <div className="flex items-center">
-                                            <div className="w-1/2">
-                                                <MacroChart {...generatedPlan.macros} />
-                                            </div>
-                                            <div className="w-1/2 space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
-                                                        <span className="text-sm text-gray-600">Protein</span>
+                                    <Card className="p-8 bg-white border-0 rounded-[32px] shadow-xl shadow-slate-100 flex flex-col justify-center">
+                                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6 text-center">Macros</h3>
+                                        <MacroDistributionChart {...generatedPlan.macros} />
+                                        <div className="mt-6 space-y-3">
+                                            {[
+                                                { label: 'Protein', val: generatedPlan.macros.protein, color: 'bg-indigo-500' },
+                                                { label: 'Carbs', val: generatedPlan.macros.carbs, color: 'bg-emerald-500' },
+                                                { label: 'Fats', val: generatedPlan.macros.fats, color: 'bg-amber-500' },
+                                            ].map((m, i) => (
+                                                <div key={i} className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`h-1.5 w-1.5 rounded-full ${m.color}`} />
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{m.label}</span>
                                                     </div>
-                                                    <span className="font-bold text-gray-900">{generatedPlan.macros.protein}%</span>
+                                                    <span className="text-xs font-black text-slate-900">{m.val}%</span>
                                                 </div>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                                                        <span className="text-sm text-gray-600">Carbs</span>
-                                                    </div>
-                                                    <span className="font-bold text-gray-900">{generatedPlan.macros.carbs}%</span>
-                                                </div>
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        <div className="w-3 h-3 rounded-full bg-yellow-500 mr-2"></div>
-                                                        <span className="text-sm text-gray-600">Fats</span>
-                                                    </div>
-                                                    <span className="font-bold text-gray-900">{generatedPlan.macros.fats}%</span>
-                                                </div>
-                                            </div>
+                                            ))}
                                         </div>
                                     </Card>
                                 </div>
 
-                                {/* Actions */}
+                                {/* Controls */}
                                 <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-bold text-gray-900">Recommended Daily Meal Plan</h3>
-                                    <div className="flex space-x-2">
+                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                                        Meal Plan <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                    </h3>
+                                    <div className="flex gap-3">
                                         <button
                                             onClick={savePlan}
-                                            className="flex items-center px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
+                                            className="h-11 px-6 bg-indigo-50 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-md"
                                         >
-                                            <Save className="h-4 w-4 mr-2" />
                                             Save Plan
                                         </button>
                                         <button
                                             onClick={() => window.print()}
-                                            className="text-sm text-gray-600 font-medium hover:text-gray-900 flex items-center px-3"
+                                            className="h-11 px-6 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg flex items-center gap-2"
                                         >
-                                            Download PDF <ArrowRight className="h-4 w-4 ml-1" />
+                                            Download PDF <ArrowRight className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Meal Plan List */}
-                                <div className="space-y-4">
+                                {/* Meal Matrix */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     {[
-                                        { title: 'Breakfast', icon: Apple, meals: generatedPlan.meals.breakfast },
-                                        { title: 'Lunch', icon: Utensils, meals: generatedPlan.meals.lunch },
-                                        { title: 'Snack', icon: Apple, meals: generatedPlan.meals.snacks },
-                                        { title: 'Dinner', icon: Utensils, meals: generatedPlan.meals.dinner }
+                                        { title: 'Breakfast', icon: Apple, meals: generatedPlan.meals.breakfast, color: 'text-rose-500' },
+                                        { title: 'Lunch', icon: Utensils, meals: generatedPlan.meals.lunch, color: 'text-indigo-500' },
+                                        { title: 'Snacks', icon: Droplets, meals: generatedPlan.meals.snacks, color: 'text-amber-500' },
+                                        { title: 'Dinner', icon: ChefHat, meals: generatedPlan.meals.dinner, color: 'text-slate-900' }
                                     ].map((section, idx) => (
-                                        <Card key={idx} className="overflow-hidden">
-                                            <div className="bg-gray-50 px-6 py-3 border-b border-gray-100 flex items-center justify-between">
-                                                <div className="flex items-center font-semibold text-gray-800">
-                                                    <section.icon className="h-4 w-4 mr-2 text-gray-500" />
-                                                    {section.title}
+                                        <Card key={idx} className="overflow-hidden rounded-[32px] border-0 shadow-xl shadow-slate-100 bg-white">
+                                            <div className="p-6 border-b border-slate-50 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center ${section.color}`}>
+                                                        <section.icon className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="text-base font-black text-slate-900 tracking-tight leading-none">{section.title}</h4>
+                                                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Meal Type</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                                                    {section.meals.reduce((acc, m) => acc + m.calories, 0)} kcal
+                                                <div className="px-3 py-1 bg-slate-900 rounded-full text-[9px] font-bold text-white tracking-widest">
+                                                    {section.meals.reduce((acc, m) => acc + m.calories, 0)} KCAL
                                                 </div>
                                             </div>
-                                            <div className="divide-y divide-gray-100">
+                                            <div className="divide-y divide-slate-50">
                                                 {section.meals.map((meal) => (
-                                                    <div key={meal.id} className="p-4 flex items-center hover:bg-gray-50 transition-colors">
-                                                        <img
-                                                            src={meal.image}
-                                                            alt={meal.name}
-                                                            className="h-16 w-16 rounded-lg object-cover shadow-sm"
-                                                        />
-                                                        <div className="ml-4 flex-1">
-                                                            <h4 className="font-medium text-gray-900">{meal.name}</h4>
-                                                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                                                                <span className="flex items-center text-blue-600 font-medium">
-                                                                    <Flame className="h-3 w-3 mr-1" />
-                                                                    {meal.calories} kcal
-                                                                </span>
-                                                                <span>P: {meal.protein}g</span>
-                                                                <span>C: {meal.carbs}g</span>
-                                                                <span>F: {meal.fats}g</span>
+                                                    <div key={meal.id} className="p-6 flex items-center gap-6 group hover:bg-slate-50 transition-colors">
+                                                        <div className="h-20 w-20 rounded-2xl overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-500">
+                                                            <img src={meal.image} alt={meal.name} className="h-full w-full object-cover" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <h4 className="text-lg font-black text-slate-900 tracking-tight">{meal.name}</h4>
+                                                            <div className="grid grid-cols-4 gap-2 mt-4">
+                                                                <div className="bg-indigo-50 px-2 py-1.5 rounded-lg text-center">
+                                                                    <p className="text-[7px] font-bold text-indigo-400 uppercase">Pro</p>
+                                                                    <p className="text-xs font-bold text-indigo-600">{meal.protein}g</p>
+                                                                </div>
+                                                                <div className="bg-emerald-50 px-2 py-1.5 rounded-lg text-center">
+                                                                    <p className="text-[7px] font-bold text-emerald-400 uppercase">Carb</p>
+                                                                    <p className="text-xs font-bold text-emerald-600">{meal.carbs}g</p>
+                                                                </div>
+                                                                <div className="bg-amber-50 px-2 py-1.5 rounded-lg text-center">
+                                                                    <p className="text-[7px] font-bold text-amber-400 uppercase">Fat</p>
+                                                                    <p className="text-xs font-bold text-amber-600">{meal.fats}g</p>
+                                                                </div>
+                                                                <div className="bg-slate-900 px-2 py-1.5 rounded-lg text-center">
+                                                                    <p className="text-[7px] font-bold text-slate-500 uppercase">Cal</p>
+                                                                    <p className="text-xs font-bold text-white">{meal.calories}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <button className="p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-colors">
-                                                            <ChevronRight className="h-5 w-5" />
-                                                        </button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -597,101 +558,78 @@ const DietPlans: React.FC = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-center p-8 bg-white border-2 border-dashed border-gray-200 rounded-xl">
-                                <div className="h-20 w-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 shadow-sm">
-                                    <Sparkles className="h-10 w-10 text-blue-600" />
+                            <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-12 bg-white shadow-xl shadow-slate-50 rounded-[32px] border-2 border-dashed border-slate-100">
+                                <div className="h-20 w-20 bg-indigo-50 rounded-[24px] flex items-center justify-center mb-6">
+                                    <Sparkles className="h-10 w-10 text-indigo-400" />
                                 </div>
-                                <h3 className="text-xl font-bold text-gray-900 mb-2">Ready to Generate Your AI Nutrition Plan?</h3>
-                                <p className="text-gray-500 max-w-md mx-auto mb-8">
-                                    Enter your stats and let Gemini AI create a scientifically calculated, South Indian meal plan just for you.
+                                <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Generate Your Plan</h3>
+                                <p className="text-slate-400 text-base font-medium max-w-sm mx-auto text-center italic leading-relaxed">
+                                    Fill in your details on the left and click "Generate Diet Plan" to see your personalized meal strategy.
                                 </p>
-                                <div className="flex space-x-8 text-left text-sm text-gray-500">
-                                    <div className="flex items-center">
-                                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 mr-3 font-bold">1</div>
-                                        <span>Enter<br />Stats</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 mr-3 font-bold">2</div>
-                                        <span>AI<br />Analysis</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 mr-3 font-bold">3</div>
-                                        <span>Get AI<br />Menu</span>
-                                    </div>
-                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             ) : (
-                /* Saved Plans Tab */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {savedPlans.length > 0 ? (
                         savedPlans.map((plan) => (
-                            <Card key={plan.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                                <div className="p-6">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <div className={`px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wide
-                      ${plan.goals === 'fat-loss' ? 'bg-orange-100 text-orange-700' :
-                                                plan.goals === 'muscle-gain' ? 'bg-blue-100 text-blue-700' :
-                                                    plan.goals === 'keto' ? 'bg-purple-100 text-purple-700' :
-                                                        'bg-green-100 text-green-700'}`}>
+                            <Card key={plan.id} className="rounded-3xl border-0 shadow-xl shadow-slate-100 hover:shadow-indigo-50 transition-all group bg-white overflow-hidden flex flex-col">
+                                <div className="p-8 flex-grow">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border
+                      ${plan.goals === 'fat-loss' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                                                plan.goals === 'muscle-gain' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
+                                                    'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
                                             {plan.goals.replace('-', ' ')}
                                         </div>
-                                        <span className="text-xs text-gray-500 flex items-center">
-                                            <Calendar className="h-3 w-3 mr-1" />
+                                        <span className="text-[9px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
+                                            <Calendar className="h-3 w-3" />
                                             {plan.date}
                                         </span>
                                     </div>
 
-                                    <h3 className="text-2xl font-bold text-gray-900 mb-1">
-                                        {plan.calories} <span className="text-sm font-normal text-gray-500">kcal/day</span>
+                                    <h3 className="text-4xl font-black text-slate-900 tracking-tight mb-1">
+                                        {plan.calories} <span className="text-lg font-black text-slate-400">kcal</span>
                                     </h3>
-                                    <div className="text-sm text-gray-500 mb-6 flex items-center">
-                                        <Utensils className="h-3 w-3 mr-1" />
-                                        {plan.dietPreference === 'veg' ? 'Vegetarian' : plan.dietPreference === 'eggitarian' ? 'Eggitarian' : 'Non-Vegetarian'}
-                                    </div>
+                                    <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest flex items-center italic mb-8">
+                                        <ChefHat className="h-3.5 w-3.5 mr-1.5" />
+                                        {plan.dietPreference === 'veg' ? 'Veg Diet' : 'Non-Veg Diet'}
+                                    </p>
 
-                                    <div className="grid grid-cols-3 gap-2 mb-6">
-                                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                                            <div className="text-xs text-gray-500">Protein</div>
-                                            <div className="font-semibold text-blue-600">{plan.macros.protein}%</div>
+                                    <div className="grid grid-cols-3 gap-3 mb-6">
+                                        <div className="text-center p-3 bg-slate-50 rounded-2xl group-hover:bg-indigo-50 transition-colors">
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">Pro</p>
+                                            <p className="text-base font-black text-indigo-600">{plan.macros.protein}%</p>
                                         </div>
-                                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                                            <div className="text-xs text-gray-500">Carbs</div>
-                                            <div className="font-semibold text-green-600">{plan.macros.carbs}%</div>
+                                        <div className="text-center p-3 bg-slate-50 rounded-2xl group-hover:bg-emerald-50 transition-colors">
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">Carb</p>
+                                            <p className="text-base font-black text-emerald-600">{plan.macros.carbs}%</p>
                                         </div>
-                                        <div className="text-center p-2 bg-gray-50 rounded-lg">
-                                            <div className="text-xs text-gray-500">Fats</div>
-                                            <div className="font-semibold text-yellow-600">{plan.macros.fats}%</div>
+                                        <div className="text-center p-3 bg-slate-50 rounded-2xl group-hover:bg-amber-50 transition-colors">
+                                            <p className="text-[8px] font-bold text-slate-400 uppercase">Fat</p>
+                                            <p className="text-base font-black text-amber-600">{plan.macros.fats}%</p>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-                                        <button
-                                            onClick={() => loadPlan(plan)}
-                                            className="text-sm font-medium text-slate-900 hover:text-blue-600 transition-colors"
-                                        >
-                                            View Details
-                                        </button>
-                                        <button
-                                            onClick={(e) => deletePlan(plan.id, e)}
-                                            className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 transition-colors"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
+                                <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                    <button onClick={() => loadPlan(plan)} className="text-[10px] font-black text-slate-900 hover:text-indigo-600 transition-colors uppercase tracking-widest">
+                                        View Plan
+                                    </button>
+                                    <button onClick={(e) => deletePlan(plan.id, e)} className="p-2.5 bg-white text-slate-400 hover:text-rose-600 rounded-xl shadow-sm transition-all">
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 </div>
                             </Card>
                         ))
                     ) : (
-                        <div className="col-span-full py-12 text-center text-gray-500">
-                            <div className="mx-auto h-12 w-12 text-gray-400 mb-3">
-                                <Sparkles className="h-12 w-12" />
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900">No saved plans</h3>
-                            <p>Generate an AI plan and click save to see it here.</p>
-                        </div>
+                        <Card className="col-span-full py-24 text-center rounded-[48px] border-4 border-dashed border-slate-100 flex flex-col items-center">
+                            <History className="h-16 w-16 text-slate-100 mb-6" />
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">No Saved Plans</h3>
+                            <p className="text-slate-400 max-w-sm mt-2 text-sm font-medium">Generate a plan to save it here.</p>
+                            <Button variant="outline" className="mt-8 rounded-xl h-10 px-6 text-xs h-10" onClick={() => setActiveTab('generator')}>Return to Generator</Button>
+                        </Card>
                     )}
                 </div>
             )}

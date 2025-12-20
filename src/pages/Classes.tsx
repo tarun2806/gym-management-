@@ -1,6 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, MapPin, Plus, Search, Filter, Edit, Trash2, Eye, X } from 'lucide-react';
-import { Button } from '../components';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Calendar,
+  Clock,
+  Users,
+  MapPin,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Eye,
+  X,
+  Flame,
+  Music,
+  Smile,
+  Zap,
+  CheckCircle2,
+  Info
+} from 'lucide-react';
+import { Button, Card } from '../components';
 import { supabase } from '../lib/supabase';
 
 interface ClassData {
@@ -17,23 +35,21 @@ interface ClassData {
 }
 
 const Classes: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [classes, setClasses] = useState<ClassData[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
 
+  // Form state for new class
   const [newClass, setNewClass] = useState({
     name: '',
     instructor: '',
     schedule_time: '',
     capacity: 20,
-    enrolled: 0,
     status: 'Active',
     room: '',
     type: 'Cardio',
@@ -51,12 +67,11 @@ const Classes: React.FC = () => {
       const { data, error } = await supabase
         .from('classes')
         .select('*')
-        .order('schedule_time', { ascending: true });
-
+        .order('schedule_time');
       if (error) throw error;
       setClasses(data || []);
-    } catch (error) {
-      console.error('Error fetching classes:', error);
+    } catch (err) {
+      console.error('Error fetching classes:', err);
     } finally {
       setLoading(false);
     }
@@ -68,26 +83,23 @@ const Classes: React.FC = () => {
     try {
       const { error } = await supabase
         .from('classes')
-        .insert([newClass]);
+        .insert([{ ...newClass, enrolled: 0 }]);
 
       if (error) throw error;
-
       setShowAddModal(false);
       setNewClass({
         name: '',
         instructor: '',
         schedule_time: '',
         capacity: 20,
-        enrolled: 0,
         status: 'Active',
         room: '',
         type: 'Cardio',
         description: ''
       });
       fetchClasses();
-    } catch (error: any) {
-      console.error('Error adding class:', error);
-      alert(`Failed to add class: ${error.message || 'Please try again.'}`);
+    } catch (err: unknown) {
+      alert(`Failed to add class: ${(err as Error).message}`);
     } finally {
       setSubmitLoading(false);
     }
@@ -100,25 +112,14 @@ const Classes: React.FC = () => {
     try {
       const { error } = await supabase
         .from('classes')
-        .update({
-          name: selectedClass.name,
-          instructor: selectedClass.instructor,
-          schedule_time: selectedClass.schedule_time,
-          capacity: selectedClass.capacity,
-          room: selectedClass.room,
-          type: selectedClass.type,
-          status: selectedClass.status,
-          description: selectedClass.description
-        })
+        .update(selectedClass)
         .eq('id', selectedClass.id);
 
       if (error) throw error;
-
       setShowEditModal(false);
       fetchClasses();
-    } catch (error: any) {
-      console.error('Error updating class:', error);
-      alert(`Failed to update class: ${error.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to update class: ${(err as Error).message}`);
     } finally {
       setSubmitLoading(false);
     }
@@ -127,337 +128,304 @@ const Classes: React.FC = () => {
   const handleDeleteClass = async (id: number) => {
     if (!confirm('Are you sure you want to delete this class?')) return;
     try {
-      const { error } = await supabase.from('classes').delete().eq('id', id);
+      const { error } = await supabase
+        .from('classes')
+        .delete()
+        .eq('id', id);
+
       if (error) throw error;
       fetchClasses();
-    } catch (error: any) {
-      console.error('Error deleting class:', error);
-      alert(`Failed to delete class: ${error.message}`);
+    } catch (err: unknown) {
+      alert(`Failed to delete class: ${(err as Error).message}`);
     }
   };
 
-  const openEditModal = (cls: ClassData) => {
-    setSelectedClass({ ...cls });
-    setShowEditModal(true);
-  };
-
-  const openViewModal = (cls: ClassData) => {
-    setSelectedClass(cls);
-    setShowViewModal(true);
-  };
-
-  const filteredClasses = classes.filter(cls => {
-    const matchesSearch = cls.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cls.instructor.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cls.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || cls.status.toLowerCase() === selectedFilter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active':
-        return 'bg-green-100 text-green-800';
-      case 'inactive':
-        return 'bg-red-100 text-red-800';
-      case 'full':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const getClassIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'yoga': return Smile;
+      case 'zumba': return Music;
+      case 'hiit': return Flame;
+      default: return Zap;
     }
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'yoga':
-        return 'bg-purple-100 text-purple-800';
-      case 'cardio':
-        return 'bg-red-100 text-red-800';
-      case 'strength':
-        return 'bg-blue-100 text-blue-800';
-      case 'dance':
-        return 'bg-pink-100 text-pink-800';
-      case 'pilates':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-
+  const filteredClasses = classes.filter(c =>
+    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.instructor.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-10 pb-20 animate-in fade-in duration-500 text-slate-900">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Classes</h1>
-          <p className="text-gray-600">Manage your gym classes and schedules</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Classes</h1>
+          <p className="text-slate-500 font-medium mt-1">Manage fitness sessions and schedules.</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
-          Schedule Class
-        </Button>
+        <Button variant="primary" className="rounded-xl px-6 h-12" icon={Plus} onClick={() => setShowAddModal(true)}>Add Class</Button>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search classes by name, instructor, or type..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="h-5 w-5 text-gray-400" />
-              <select
-                value={selectedFilter}
-                onChange={(e) => setSelectedFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="full">Full</option>
-              </select>
-            </div>
-          </div>
+      <div className="flex flex-col md:flex-row items-center gap-6">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+          <input
+            type="text"
+            placeholder="Search by class name or instructor..."
+            className="w-full pl-12 pr-6 py-3 bg-white border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 outline-none font-bold text-xs shadow-sm transition-all text-slate-900"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
         </div>
+        <select
+          value={selectedFilter}
+          onChange={(e) => setSelectedFilter(e.target.value)}
+          className="h-11 px-6 bg-white border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 outline-none font-bold text-xs text-slate-500 cursor-pointer appearance-none min-w-[160px] shadow-sm"
+        >
+          <option value="all">All Types</option>
+          <option value="Cardio">Cardio</option>
+          <option value="Strength">Strength</option>
+          <option value="Yoga">Yoga</option>
+          <option value="Zumba">Zumba</option>
+        </select>
       </div>
 
-      {/* Classes Grid */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading classes...</div>
+        <div className="h-[40vh] flex flex-col items-center justify-center gap-4">
+          <Calendar className="h-10 w-10 text-slate-300 animate-pulse" />
+          <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest text-slate-900">Loading Schedule...</p>
+        </div>
       ) : filteredClasses.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-500">No classes found.</p>
-        </div>
+        <Card className="rounded-3xl border-slate-100 p-20 text-center shadow-xl shadow-slate-200/40 bg-white">
+          <Plus className="h-12 w-12 text-slate-100 mx-auto mb-6" />
+          <h3 className="text-xl font-black text-slate-900">No Classes Found</h3>
+          <p className="text-slate-400 mt-2 font-medium text-sm">No sessions match your search criteria.</p>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredClasses.map((cls) => (
-            <div key={cls.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200">
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{cls.name}</h3>
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getTypeColor(cls.type)}`}>
-                      {cls.type}
-                    </span>
-                  </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(cls.status)}`}>
-                    {cls.status}
-                  </span>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+          {filteredClasses.map((c) => {
+            const Icon = getClassIcon(c.type);
+            const occupancy = (c.enrolled / c.capacity) * 100;
 
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{cls.description}</p>
+            return (
+              <Card key={c.id} className="rounded-3xl border-0 shadow-lg shadow-slate-200/50 hover:shadow-indigo-100 transition-all group overflow-hidden bg-white">
+                <div className="p-8">
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="h-12 w-12 bg-slate-900 text-white rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                      <Icon className="h-6 w-6 text-indigo-400" />
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => { setSelectedClass(c); setShowViewModal(true); }} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Eye className="h-4 w-4" /></button>
+                      <button onClick={() => { setSelectedClass({ ...c }); setShowEditModal(true); }} className="p-2 text-slate-400 hover:text-emerald-600 transition-colors"><Edit className="h-4 w-4" /></button>
+                      <button onClick={() => handleDeleteClass(c.id)} className="p-2 text-slate-400 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  </div>
 
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Users className="h-4 w-4 mr-2" />
-                    <span>{cls.instructor}</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100 bg-slate-50`}>
+                        {c.type}
+                      </span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{c.status}</span>
+                    </div>
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight">{c.name}</h3>
+                    <p className="text-xs font-bold text-slate-500">Instructor: {c.instructor}</p>
                   </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 mr-2" />
-                    <span>{cls.schedule_time ? new Date(cls.schedule_time).toLocaleString() : 'Not set'}</span>
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <MapPin className="h-4 w-4 mr-2" />
-                    <span>{cls.room || 'TBA'}</span>
+
+                  <div className="mt-8 space-y-4">
+                    <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Clock className="h-3 w-3" /> {c.schedule_time}
+                      </div>
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <MapPin className="h-3 w-3" /> {c.room}
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-2xl">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Enrolled</span>
+                        <span className="text-[9px] font-black text-slate-900 uppercase tracking-widest">{c.enrolled} / {c.capacity}</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-1000 ${occupancy > 90 ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                          style={{ width: `${occupancy}%` }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
-
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-sm mb-2">
-                    <span className="text-gray-600">Enrollment</span>
-                    <span className="font-medium">{cls.enrolled}/{cls.capacity}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${cls.capacity > 0 ? (cls.enrolled / cls.capacity) * 100 : 0}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      className="text-blue-600 hover:text-blue-900 p-2 rounded-lg hover:bg-blue-50"
-                      onClick={() => openViewModal(cls)}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      className="text-green-600 hover:text-green-900 p-2 rounded-lg hover:bg-green-50"
-                      onClick={() => openEditModal(cls)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteClass(cls.id)}
-                      className="text-red-600 hover:text-red-900 p-2 rounded-lg hover:bg-red-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm">
-                    Manage
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Add Class Modal */}
+      {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-gray-400"><X className="h-5 w-5" /></button>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Schedule New Class</h2>
-            <form onSubmit={handleAddClass} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Class Name</label>
-                <input required type="text" className="w-full border p-2 rounded-lg" value={newClass.name} onChange={e => setNewClass({ ...newClass, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Instructor</label>
-                  <input required type="text" className="w-full border p-2 rounded-lg" value={newClass.instructor} onChange={e => setNewClass({ ...newClass, instructor: e.target.value })} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-2xl bg-white rounded-3xl border-0 shadow-3xl p-10 relative">
+            <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Add Class</h3>
+            <p className="text-slate-500 font-medium mb-10 text-sm">Schedule a new training session.</p>
+
+            <form onSubmit={handleAddClass} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Class Name</label>
+                  <input
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    placeholder="Morning Yoga"
+                    value={newClass.name}
+                    onChange={(e) => setNewClass({ ...newClass, name: e.target.value })}
+                    required
+                  />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <select className="w-full border p-2 rounded-lg" value={newClass.type} onChange={e => setNewClass({ ...newClass, type: e.target.value })}>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Instructor</label>
+                  <input
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    placeholder="Name"
+                    value={newClass.instructor}
+                    onChange={(e) => setNewClass({ ...newClass, instructor: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Type</label>
+                  <select
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer text-slate-900"
+                    value={newClass.type}
+                    onChange={(e) => setNewClass({ ...newClass, type: e.target.value })}
+                  >
                     <option value="Cardio">Cardio</option>
-                    <option value="Yoga">Yoga</option>
                     <option value="Strength">Strength</option>
-                    <option value="Dance">Dance</option>
-                    <option value="Pilates">Pilates</option>
+                    <option value="Yoga">Yoga</option>
+                    <option value="Zumba">Zumba</option>
                   </select>
                 </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Schedule Time</label>
-                <input type="datetime-local" className="w-full border p-2 rounded-lg" value={newClass.schedule_time} onChange={e => setNewClass({ ...newClass, schedule_time: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Room</label>
-                  <input type="text" className="w-full border p-2 rounded-lg" value={newClass.room} onChange={e => setNewClass({ ...newClass, room: e.target.value })} />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Schedule Time</label>
+                  <input
+                    placeholder="Mon, Wed 8:00 AM"
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={newClass.schedule_time}
+                    onChange={(e) => setNewClass({ ...newClass, schedule_time: e.target.value })}
+                    required
+                  />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Capacity</label>
-                  <input type="number" className="w-full border p-2 rounded-lg" value={newClass.capacity} onChange={e => setNewClass({ ...newClass, capacity: parseInt(e.target.value) })} />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Room</label>
+                  <input
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    placeholder="Studio A"
+                    value={newClass.room}
+                    onChange={(e) => setNewClass({ ...newClass, room: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Capacity</label>
+                  <input
+                    type="number"
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={newClass.capacity}
+                    onChange={(e) => setNewClass({ ...newClass, capacity: parseInt(e.target.value) })}
+                    required
+                  />
                 </div>
               </div>
-              <div className="pt-4 flex space-x-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" className="flex-1" loading={submitLoading}>Add Class</Button>
-              </div>
+              <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]" loading={submitLoading}>Save Class</Button>
             </form>
-          </div>
-        </div>
-      )}
-      {/* Edit Class Modal */}
-      {showEditModal && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
-            <button onClick={() => setShowEditModal(false)} className="absolute top-4 right-4 text-gray-400"><X className="h-5 w-5" /></button>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Class</h2>
-            <form onSubmit={handleUpdateClass} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Class Name</label>
-                <input required type="text" className="w-full border p-2 rounded-lg" value={selectedClass.name} onChange={e => setSelectedClass({ ...selectedClass, name: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Instructor</label>
-                  <input required type="text" className="w-full border p-2 rounded-lg" value={selectedClass.instructor} onChange={e => setSelectedClass({ ...selectedClass, instructor: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <select className="w-full border p-2 rounded-lg" value={selectedClass.type} onChange={e => setSelectedClass({ ...selectedClass, type: e.target.value })}>
-                    <option value="Cardio">Cardio</option>
-                    <option value="Yoga">Yoga</option>
-                    <option value="Strength">Strength</option>
-                    <option value="Dance">Dance</option>
-                    <option value="Pilates">Pilates</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Schedule Time</label>
-                <input type="datetime-local" className="w-full border p-2 rounded-lg" value={selectedClass.schedule_time ? selectedClass.schedule_time.slice(0, 16) : ''} onChange={e => setSelectedClass({ ...selectedClass, schedule_time: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Room</label>
-                  <input type="text" className="w-full border p-2 rounded-lg" value={selectedClass.room} onChange={e => setSelectedClass({ ...selectedClass, room: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Capacity</label>
-                  <input type="number" className="w-full border p-2 rounded-lg" value={selectedClass.capacity} onChange={e => setSelectedClass({ ...selectedClass, capacity: parseInt(e.target.value) })} />
-                </div>
-              </div>
-              <div className="pt-4 flex space-x-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" className="flex-1" loading={submitLoading}>Save Changes</Button>
-              </div>
-            </form>
-          </div>
+          </Card>
         </div>
       )}
 
-      {/* View Class Modal */}
+      {/* Edit Modal */}
+      {showEditModal && selectedClass && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-2xl bg-white rounded-3xl border-0 shadow-3xl p-10 relative">
+            <button onClick={() => setShowEditModal(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Edit Class</h3>
+            <p className="text-slate-500 font-medium mb-10 text-sm">Update session details.</p>
+
+            <form onSubmit={handleUpdateClass} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Class Name</label>
+                  <input
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={selectedClass.name}
+                    onChange={(e) => setSelectedClass({ ...selectedClass, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Instructor</label>
+                  <input
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={selectedClass.instructor}
+                    onChange={(e) => setSelectedClass({ ...selectedClass, instructor: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                  <select
+                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer text-slate-900"
+                    value={selectedClass.status}
+                    onChange={(e) => setSelectedClass({ ...selectedClass, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="Full">Full</option>
+                  </select>
+                </div>
+              </div>
+              <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]" loading={submitLoading}>Update Class</Button>
+            </form>
+          </Card>
+        </div>
+      )}
+
+      {/* View Modal */}
       {showViewModal && selectedClass && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-lg w-full p-8 relative">
-            <button onClick={() => setShowViewModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
-            <div className="mb-6">
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full mb-2 ${getTypeColor(selectedClass.type)}`}>{selectedClass.type}</span>
-              <h2 className="text-3xl font-bold text-gray-900">{selectedClass.name}</h2>
-              <p className="text-gray-500 mt-2">{selectedClass.description || 'No description provided for this class.'}</p>
-            </div>
-            <div className="grid grid-cols-2 gap-6 border-t border-gray-100 pt-6">
-              <div>
-                <label className="block text-sm text-gray-500">Instructor</label>
-                <p className="font-semibold text-gray-900">{selectedClass.instructor}</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-lg bg-white rounded-3xl border-0 shadow-3xl p-10 relative">
+            <button onClick={() => setShowViewModal(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <div className="flex items-center gap-6 mb-10">
+              <div className="h-16 w-16 bg-slate-900 text-white rounded-2xl flex items-center justify-center text-2xl font-black">
+                {getClassIcon(selectedClass.type)({ className: 'h-8 w-8 text-indigo-400' })}
               </div>
               <div>
-                <label className="block text-sm text-gray-500">Schedule</label>
-                <p className="font-semibold text-gray-900">{selectedClass.schedule_time ? new Date(selectedClass.schedule_time).toLocaleString() : 'TBA'}</p>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-500">Location</label>
-                <p className="font-semibold text-gray-900">{selectedClass.room || 'Room TBA'}</p>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-500">Status</label>
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(selectedClass.status)}`}>{selectedClass.status}</span>
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">{selectedClass.name}</h3>
+                <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100 bg-slate-50 mt-2 inline-block">
+                  {selectedClass.type}
+                </span>
               </div>
             </div>
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-500">Class Enrollment</span>
-                <span className="text-sm font-medium">{selectedClass.enrolled} / {selectedClass.capacity} Spots Filled</span>
+
+            <div className="grid grid-cols-2 gap-4 mb-10">
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Instructor</p>
+                <p className="font-bold text-sm text-slate-900">{selectedClass.instructor}</p>
               </div>
-              <div className="w-full bg-gray-100 rounded-full h-3">
-                <div className="bg-blue-600 h-3 rounded-full" style={{ width: `${(selectedClass.enrolled / selectedClass.capacity) * 100}%` }}></div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Room</p>
+                <p className="font-bold text-sm text-slate-900">{selectedClass.room}</p>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 col-span-2">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Description</p>
+                <p className="font-bold text-xs text-slate-900 leading-relaxed">{selectedClass.description || 'No description provided.'}</p>
               </div>
             </div>
-            <div className="mt-8">
-              <Button variant="outline" className="w-full" onClick={() => setShowViewModal(false)}>Close Details</Button>
-            </div>
-          </div>
+
+            <Button variant="outline" className="w-full h-12 rounded-xl" onClick={() => setShowViewModal(false)}>Close</Button>
+          </Card>
         </div>
       )}
     </div>

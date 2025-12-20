@@ -6,19 +6,24 @@ import {
   Settings,
   Shield,
   BarChart3,
-  Activity,
   Database,
-  FileText,
-  Bell,
   Eye,
   Edit,
   Trash2,
   Plus,
   X,
   Mail,
-  User as UserIcon
+  User as UserIcon,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  ChevronRight,
+  Search,
+  Terminal,
+  History as HistoryIcon,
+  Activity as ActivityIcon
 } from 'lucide-react';
-import { Button, Card, Stats, SearchInput } from '../components';
+import { Button, Card } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types';
@@ -52,7 +57,6 @@ const Admin: React.FC = () => {
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [submitLoading, setSubmitLoading] = useState(false);
 
   // Form State
@@ -78,7 +82,7 @@ const Admin: React.FC = () => {
       if (error) throw error;
       setUsers(data || []);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Sync failure:', error);
     } finally {
       setLoading(false);
     }
@@ -90,39 +94,34 @@ const Admin: React.FC = () => {
         .from('system_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(50);
 
       if (error) throw error;
       setSystemLogs(data || []);
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.error('Log fetch failure:', error);
     }
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitLoading(true);
     try {
-      const { error } = await supabase
-        .from('app_users')
-        .insert([{
-          username: formData.username,
-          email: formData.email,
-          role: formData.role,
-          status: 'active',
-          permissions: formData.role === 'owner' || formData.role === 'admin' ? ['all'] : ['members']
-        }]);
+      setSubmitLoading(true);
+      const { error } = await supabase.from('app_users').insert([{
+        username: formData.username,
+        email: formData.email,
+        role: formData.role
+      }]);
 
       if (error) throw error;
 
-      await logAction('info', `New user added: ${formData.username}`, user?.username || 'admin', 'user_add');
-
+      await logAction('info', `New user: ${formData.username}`, user?.username || 'admin', 'user_create');
       setIsUserModalOpen(false);
       setFormData({ username: '', email: '', role: 'staff' });
+      showNotification('User created successfully', 'success');
       fetchUsers();
     } catch (error: unknown) {
-      const err = error as { message: string };
-      showNotification(err.message, 'error');
+      showNotification((error as Error).message || 'Failed to create user', 'error');
     } finally {
       setSubmitLoading(false);
     }
@@ -131,8 +130,9 @@ const Admin: React.FC = () => {
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
-    setSubmitLoading(true);
+
     try {
+      setSubmitLoading(true);
       const { error } = await supabase
         .from('app_users')
         .update({
@@ -144,13 +144,12 @@ const Admin: React.FC = () => {
 
       if (error) throw error;
 
-      await logAction('info', `User profile updated: ${formData.username}`, user?.username || 'admin', 'user_update');
+      await logAction('info', `Profile updated: ${formData.username}`, user?.username || 'admin', 'user_update');
       showNotification('User updated successfully', 'success');
       setIsEditUserModalOpen(false);
       fetchUsers();
     } catch (error: unknown) {
-      const err = error as { message: string };
-      showNotification(err.message, 'error');
+      showNotification((error as Error).message || 'Failed to update user', 'error');
     } finally {
       setSubmitLoading(false);
     }
@@ -166,11 +165,10 @@ const Admin: React.FC = () => {
     try {
       const { error } = await supabase.from('app_users').delete().eq('id', id);
       if (error) throw error;
-      await logAction('warning', `User deleted with ID: ${id}`, user?.username || 'admin', 'user_delete');
+      await logAction('warning', `User deleted ID: ${id}`, user?.username || 'admin', 'user_delete');
       fetchUsers();
     } catch (error: unknown) {
-      const err = error as { message: string };
-      showNotification(err.message, 'error');
+      showNotification((error as Error).message || 'Failed to delete user', 'error');
     }
   };
 
@@ -179,7 +177,7 @@ const Admin: React.FC = () => {
       await supabase.from('system_logs').insert([{ level, message, user_name: userName, action }]);
       fetchLogs();
     } catch (err) {
-      console.error('Logging failed:', err);
+      console.error('Log writing failure:', err);
     }
   };
 
@@ -188,90 +186,93 @@ const Admin: React.FC = () => {
     navigate('/login');
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleStyle = (role: string) => {
     switch (role) {
-      case 'owner': return 'bg-amber-100 text-amber-800 border border-amber-200';
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'manager': return 'bg-purple-100 text-purple-800';
-      case 'staff': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'suspended': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'owner': return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+      case 'admin': return 'bg-rose-500/10 text-rose-500 border-rose-500/20';
+      case 'manager': return 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20';
+      default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
     }
   };
 
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || u.role === selectedFilter;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
-  const adminStats = [
-    { title: 'Total Users', value: users.length, change: '+2', changeType: 'positive' as const, icon: Users, color: 'bg-blue-500' },
-    { title: 'System Logs', value: systemLogs.length, change: 'Recent', changeType: 'neutral' as const, icon: FileText, color: 'bg-green-500' },
-    { title: 'Security Score', value: '98%', change: '+1%', changeType: 'positive' as const, icon: Shield, color: 'bg-purple-500' },
-    { title: 'Database', value: 'Operational', change: 'Live', changeType: 'positive' as const, icon: Database, color: 'bg-orange-500' }
-  ];
-
   const renderDashboard = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">System Overview</h2>
-        <Stats items={adminStats} columns={4} />
+    <div className="space-y-10 pb-20 animate-in fade-in duration-700">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Users', val: users.length, icon: Users, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'System Errors', val: systemLogs.filter(l => l.level === 'error').length, icon: ActivityIcon, color: 'text-rose-600', bg: 'bg-rose-50' },
+          { label: 'System Status', val: 'Online', icon: ShieldCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'Uptime', val: '99.9%', icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
+        ].map((stat, i) => (
+          <Card key={i} className="rounded-3xl border-0 shadow-xl shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <div className={`h-10 w-10 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center shadow-inner`}>
+                <stat.icon className="h-5 w-5" />
+              </div>
+            </div>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
+            <h3 className="text-2xl font-black text-slate-900 tracking-tight">{stat.val}</h3>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-gray-900">Recent System Activity</h3>
-            <Button variant="outline" size="sm" onClick={() => setActiveTab('logs')}>View All Logs</Button>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2 rounded-[32px] border-0 bg-white shadow-xl shadow-slate-200/40 p-10">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Recent Activity</h3>
+              <p className="text-slate-400 font-medium mt-1 text-sm leading-relaxed">Monitoring system logs and user actions.</p>
+            </div>
+            <Button variant="outline" className="rounded-xl px-4 h-10 text-[10px]" icon={HistoryIcon} onClick={() => setActiveTab('logs')}>Audit Logs</Button>
           </div>
           <div className="space-y-4">
-            {systemLogs.slice(0, 5).map((log) => (
-              <div key={log.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-2xl">
-                <div className={`mt-1 h-3 w-3 rounded-full flex-shrink-0 ${log.level === 'error' ? 'bg-red-500 animate-pulse' :
-                  log.level === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'
-                  }`} />
+            {systemLogs.slice(0, 6).map((log) => (
+              <div key={log.id} className="flex items-center gap-4 p-4 bg-slate-50/50 rounded-2xl border border-slate-50 hover:bg-white hover:shadow-lg transition-all duration-300">
+                <div className={`h-2.5 w-2.5 rounded-full ${log.level === 'error' ? 'bg-rose-500 shadow-lg shadow-rose-200 animate-pulse' : log.level === 'warning' ? 'bg-amber-500' : 'bg-indigo-500'}`} />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 leading-tight">{log.message}</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {new Date(log.created_at).toLocaleString()} • {log.user_name}
+                  <p className="text-xs font-bold text-slate-900 leading-tight">{log.message}</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                    {new Date(log.created_at).toLocaleTimeString()} • User: {log.user_name} • Action: {log.action}
                   </p>
                 </div>
+                <ChevronRight className="h-4 w-4 text-slate-300" />
               </div>
             ))}
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-gray-900">Immediate Actions</h3>
+        <Card className="rounded-[32px] border-0 bg-slate-900 text-white p-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10">
+            <Database className="h-32 w-32" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setIsUserModalOpen(true)} className="flex flex-col items-center justify-center p-6 bg-blue-50 rounded-2xl group hover:bg-blue-600 transition-all duration-300">
-              <Plus className="h-6 w-6 text-blue-600 group-hover:text-white mb-2" />
-              <span className="text-sm font-bold text-blue-900 group-hover:text-white">Add User</span>
-            </button>
-            <button onClick={() => setIsSettingsModalOpen(true)} className="flex flex-col items-center justify-center p-6 bg-purple-50 rounded-2xl group hover:bg-purple-600 transition-all duration-300">
-              <Settings className="h-6 w-6 text-purple-600 group-hover:text-white mb-2" />
-              <span className="text-sm font-bold text-purple-900 group-hover:text-white">Settings</span>
-            </button>
-            <button className="flex flex-col items-center justify-center p-6 bg-green-50 rounded-2xl group hover:bg-green-600 transition-all duration-300">
-              <Database className="h-6 w-6 text-green-600 group-hover:text-white mb-2" />
-              <span className="text-sm font-bold text-green-900 group-hover:text-white">DB Backup</span>
-            </button>
-            <button onClick={() => setActiveTab('security')} className="flex flex-col items-center justify-center p-6 bg-red-50 rounded-2xl group hover:bg-red-600 transition-all duration-300">
-              <Shield className="h-6 w-6 text-red-600 group-hover:text-white mb-2" />
-              <span className="text-sm font-bold text-red-900 group-hover:text-white">Security</span>
-            </button>
+          <div className="relative z-10">
+            <h3 className="text-xl font-black mb-3 flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Admin Tools
+            </h3>
+            <p className="text-slate-400 font-medium mb-8 leading-relaxed text-sm">Quick actions and system management.</p>
+
+            <div className="grid grid-cols-1 gap-4">
+              {[
+                { label: 'Add New User', icon: Plus, action: () => setIsUserModalOpen(true), color: 'bg-indigo-600 hover:bg-indigo-500' },
+                { label: 'Settings', icon: Settings, action: () => setIsSettingsModalOpen(true), color: 'bg-white/10 hover:bg-white/20' },
+                { label: 'Security', icon: Shield, action: () => navigate('/settings?tab=security'), color: 'bg-white/10 hover:bg-white/20' },
+                { label: 'Backup', icon: Database, action: () => { }, color: 'bg-white/10 hover:bg-white/20' }
+              ].map((btn, i) => (
+                <button key={i} onClick={btn.action} className={`w-full py-4 rounded-2xl flex items-center justify-between px-6 transition-all active:scale-95 ${btn.color}`}>
+                  <div className="flex items-center gap-3">
+                    <btn.icon className="h-4 w-4" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">{btn.label}</span>
+                  </div>
+                  <ArrowRight className="h-4 w-4 opacity-40" />
+                </button>
+              ))}
+            </div>
           </div>
         </Card>
       </div>
@@ -279,82 +280,74 @@ const Admin: React.FC = () => {
   );
 
   const renderUserManagement = () => (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        <Button variant="primary" icon={Plus} onClick={() => setIsUserModalOpen(true)}>
-          New Administrator
-        </Button>
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">User List</h2>
+          <p className="text-slate-500 font-medium mt-1 text-sm">Manage user roles and permissions.</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative group">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              className="pl-12 pr-6 py-3 bg-white border border-slate-100 rounded-xl focus:ring-4 focus:ring-indigo-50 outline-none w-full sm:w-80 font-bold text-xs shadow-sm transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button variant="primary" className="rounded-xl px-6 h-11" icon={Plus} onClick={() => setIsUserModalOpen(true)}>Add User</Button>
+        </div>
       </div>
 
-      <SearchInput
-        value={searchTerm}
-        onChange={setSearchTerm}
-        placeholder="Filter by name or email..."
-        filters={[
-          { value: 'all', label: 'All Roles' },
-          { value: 'owner', label: 'Owners' },
-          { value: 'admin', label: 'Admins' },
-          { value: 'manager', label: 'Managers' },
-          { value: 'staff', label: 'Staff' }
-        ]}
-        selectedFilter={selectedFilter}
-        onFilterChange={setSelectedFilter}
-      />
-
-      <Card className="overflow-hidden border-0 shadow-xl">
+      <Card className="rounded-[32px] border-0 shadow-2xl shadow-slate-200/40 bg-white overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">User</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Role</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest">Last Login</th>
-                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-widest text-right">Actions</th>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100/50">
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Administrator</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Access Role</th>
+                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400">Loading user database...</td></tr>
-              ) : filteredUsers.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-400">No users match your criteria.</td></tr>
-              ) : filteredUsers.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50/80 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center mr-3 font-bold">
-                        {u.username[0].toUpperCase()}
+            <tbody className="divide-y divide-slate-50">
+              {filteredUsers.map((u) => (
+                <tr key={u.id} className="group hover:bg-slate-50/50 transition-colors">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-900 font-black text-lg shadow-sm border border-white">
+                        {u.username[0]}
                       </div>
                       <div>
-                        <div className="text-sm font-bold text-gray-900">{u.username}</div>
-                        <div className="text-xs text-gray-500">{u.email}</div>
+                        <p className="font-black text-slate-900 tracking-tight">{u.username}</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-0.5">
+                          <Mail className="h-3 w-3" /> {u.email}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg ${getRoleColor(u.role)}`}>
+                  <td className="px-8 py-6">
+                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border shadow-sm ${getRoleStyle(u.role)}`}>
                       {u.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(u.status || 'inactive')}`}>
-                      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current"></span>
-                      {u.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {u.lastLogin ? new Date(u.lastLogin).toLocaleDateString() : 'Active Session'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right">
-                    <div className="flex items-center justify-end space-x-1">
-                      <button onClick={() => { setSelectedUser(u); setIsViewUserModalOpen(true) }} className="p-2 text-gray-400 hover:text-blue-600 bg-gray-50 rounded-xl transition-all">
+                  <td className="px-8 py-6">
+                    <div className="flex justify-end gap-2 translate-x-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
+                      <button onClick={() => { setSelectedUser(u); setIsViewUserModalOpen(true); }} className="p-2.5 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-100 transition-all active:scale-90">
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button onClick={() => { setSelectedUser(u); setFormData({ username: u.username, email: u.email || '', role: u.role }); setIsEditUserModalOpen(true) }} className="p-2 text-gray-400 hover:text-green-600 bg-gray-50 rounded-xl transition-all">
+                      <button
+                        onClick={() => {
+                          setSelectedUser(u);
+                          setFormData({ username: u.username, email: u.email || '', role: u.role });
+                          setIsEditUserModalOpen(true);
+                        }}
+                        className="p-2.5 bg-white text-slate-400 hover:text-emerald-600 rounded-lg shadow-sm border border-slate-100 transition-all active:scale-90"
+                      >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button onClick={() => handleDeleteUser(u.id)} className="p-2 text-gray-400 hover:text-red-600 bg-gray-50 rounded-xl transition-all">
+                      <button onClick={() => handleDeleteUser(u.id)} className="p-2.5 bg-white text-slate-400 hover:text-rose-600 rounded-lg shadow-sm border border-slate-100 transition-all active:scale-90">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
@@ -365,332 +358,264 @@ const Admin: React.FC = () => {
           </table>
         </div>
       </Card>
-
-      {notification && (
-        <div className={`fixed bottom-8 right-8 px-6 py-4 rounded-2xl shadow-2xl z-[60] flex items-center space-x-3 animate-in slide-in-from-right-8 duration-300 ${notification.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
-          }`}>
-          <Shield className="h-5 w-5" />
-          <span className="font-bold text-sm">{notification.message}</span>
-        </div>
-      )}
     </div>
   );
 
-  const renderSystemLogs = () => (
-    <div className="space-y-6 animate-in fade-in duration-500">
+  const renderLogs = () => (
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">Security Audit Logs</h2>
-        <Button variant="outline" size="sm" icon={FileText}>Export CSV</Button>
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Audit Logs</h2>
+          <p className="text-slate-500 font-medium mt-1 text-sm">Review system events.</p>
+        </div>
+        <Button variant="outline" className="rounded-xl px-4 h-11" icon={ActivityIcon} onClick={fetchLogs}>Refresh</Button>
       </div>
 
-      <Card className="p-4 bg-slate-900 border-0 shadow-2xl">
-        <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
-          {systemLogs.map((log) => (
-            <div key={log.id} className="flex items-center space-x-4 p-4 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-colors">
-              <span className={`px-2 py-1 text-[10px] font-bold uppercase rounded-lg shrink-0 ${log.level === 'error' ? 'bg-red-500 text-white' :
-                log.level === 'warning' ? 'bg-yellow-500 text-black' : 'bg-blue-500 text-white'
-                }`}>
-                {log.level}
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-100 font-medium truncate">{log.message}</p>
-                <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-widest font-bold">
-                  {new Date(log.created_at).toLocaleString()} | ADMIN: {log.user_name} | OP: {log.action}
-                </p>
+      <div className="grid grid-cols-1 gap-4">
+        {systemLogs.map((log) => (
+          <div key={log.id} className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-200/20 hover:border-indigo-100 transition-all">
+            <div className="flex items-center gap-6">
+              <div className={`h-12 w-12 rounded-xl flex items-center justify-center shadow-inner ${log.level === 'error' ? 'bg-rose-50 text-rose-600' : log.level === 'warning' ? 'bg-amber-50 text-amber-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                <Terminal className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest border ${log.level === 'error' ? 'bg-rose-50 text-rose-600 border-rose-100' : log.level === 'warning' ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-indigo-50 text-indigo-600 border-indigo-100'}`}>
+                    {log.level}
+                  </span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{new Date(log.created_at).toLocaleString()}</span>
+                </div>
+                <p className="text-sm font-black text-slate-900 mt-2 tracking-tight">{log.message}</p>
               </div>
             </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="space-y-6 animate-in zoom-in-95 duration-500">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">System Preferences</h2>
-        <Button variant="primary" onClick={() => setIsSettingsModalOpen(true)}>Save All Changes</Button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <Card className="p-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
-            <Settings className="h-5 w-5 mr-3 text-blue-600" />
-            Core Configuration
-          </h3>
-          <div className="space-y-6">
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Organization Name</label>
-              <input readOnly value="GymPro Management System" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none" />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Support Contact</label>
-              <input readOnly value="support@gympro.com" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl text-sm font-bold outline-none" />
+            <div className="mt-4 md:mt-0 px-6 py-2 bg-slate-50 rounded-xl">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Operator</p>
+              <p className="text-xs font-bold text-slate-900 mt-0.5">{log.user_name} • {log.action}</p>
             </div>
           </div>
-        </Card>
-
-        <Card className="p-8">
-          <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
-            <Shield className="h-5 w-5 mr-3 text-red-600" />
-            Access Control
-          </h3>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between p-4 bg-green-50 rounded-2xl">
-              <div>
-                <h4 className="text-sm font-bold text-green-900 font-bold">2-Factor Authentication</h4>
-                <p className="text-xs text-green-700">Enforced for all admin roles</p>
-              </div>
-              <div className="h-6 w-12 bg-green-500 rounded-full relative shadow-inner">
-                <div className="absolute right-1 top-1 h-4 w-4 bg-white rounded-full"></div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-4 bg-slate-100 rounded-2xl opacity-50">
-              <div>
-                <h4 className="text-sm font-bold text-slate-700">IP Whitelisting</h4>
-                <p className="text-xs text-slate-500">Feature not available in Free tier</p>
-              </div>
-            </div>
-          </div>
-        </Card>
+        ))}
       </div>
     </div>
   );
 
-  const renderSecurity = () => (
-    <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
-      <h2 className="text-2xl font-bold text-gray-900">Global Security Shield</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-        <Card className="p-10 border-t-4 border-green-500">
-          <Shield className="h-16 w-16 text-green-600 mx-auto mb-6" />
-          <h3 className="text-lg font-bold text-gray-900">Infrastructure</h3>
-          <p className="text-3xl font-extrabold text-green-600 mt-2">OPTIMAL</p>
-          <p className="text-xs text-gray-500 mt-4 font-bold uppercase tracking-widest">Database protected by RLS</p>
-        </Card>
-
-        <Card className="p-10 border-t-4 border-blue-500">
-          <Activity className="h-16 w-16 text-blue-600 mx-auto mb-6" />
-          <h3 className="text-lg font-bold text-gray-900">Traffic Monitoring</h3>
-          <p className="text-3xl font-extrabold text-blue-600 mt-2">12 ACTIVE</p>
-          <p className="text-xs text-gray-500 mt-4 font-bold uppercase tracking-widest">Zero suspicious packets</p>
-        </Card>
-
-        <Card className="p-10 border-t-4 border-amber-500">
-          <Bell className="h-16 w-16 text-amber-600 mx-auto mb-6" />
-          <h3 className="text-lg font-bold text-gray-900">System Alerts</h3>
-          <p className="text-3xl font-extrabold text-amber-600 mt-2">2 REVIEW</p>
-          <p className="text-xs text-gray-500 mt-4 font-bold uppercase tracking-widest">Minor config warnings</p>
-        </Card>
+  if (loading) {
+    return (
+      <div className="h-[80vh] flex flex-col items-center justify-center gap-6">
+        <div className="h-16 w-16 bg-slate-900 rounded-[28px] flex items-center justify-center animate-bounce shadow-2xl">
+          <ShieldCheck className="h-8 w-8 text-white animate-pulse" />
+        </div>
       </div>
-    </div>
-  );
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard': return renderDashboard();
-      case 'users': return renderUserManagement();
-      case 'logs': return renderSystemLogs();
-      case 'settings': return renderSettings();
-      case 'security': return renderSecurity();
-      default: return renderDashboard();
-    }
-  };
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50/50">
-      {/* Premium Header */}
-      <div className="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="h-12 w-12 bg-slate-900 text-white rounded-2xl flex items-center justify-center shadow-2xl">
-              <Shield className="h-6 w-6" />
+    <div className="min-h-screen bg-slate-50/50 p-6 lg:p-12 relative overflow-hidden text-slate-900">
+      <div className="max-w-[1400px] mx-auto relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-16">
+          <div className="flex items-center gap-6">
+            <div className="h-16 w-16 bg-slate-900 text-white rounded-[24px] flex items-center justify-center shadow-2xl relative group">
+              <ShieldCheck className="h-8 w-8 transition-transform group-hover:scale-110" />
+              <div className="absolute -top-1 -right-1 h-4 w-4 bg-emerald-500 rounded-full border-2 border-white animate-pulse" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight leading-none">Command Center</h1>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Admin OS v2.4.0</p>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">Admin Portal</h1>
+              <p className="text-slate-500 font-medium italic mt-1 italic flex items-center gap-2">
+                System Control Center
+              </p>
             </div>
           </div>
-          <div className="flex items-center space-x-6">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-bold text-gray-900">tarunshiva28</p>
-              <p className="text-[10px] text-green-500 font-bold uppercase tracking-widest">Super Admin</p>
-            </div>
-            <button onClick={handleLogout} className="px-6 py-2.5 bg-gray-100 hover:bg-red-50 text-gray-700 hover:text-red-600 rounded-xl text-xs font-bold transition-all">Logout Session</button>
+
+          <div className="flex items-center p-2 bg-white/80 backdrop-blur-xl border border-white rounded-[28px] shadow-xl shadow-slate-200/50">
+            {[
+              { id: 'dashboard', icon: BarChart3, label: 'Board' },
+              { id: 'users', icon: Users, label: 'Users' },
+              { id: 'logs', icon: ActivityIcon, label: 'Logs' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'dashboard' | 'users' | 'logs' | 'security')}
+                className={`flex items-center gap-3 px-8 py-4 rounded-[22px] transition-all duration-300 font-black text-[10px] uppercase tracking-widest ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+              >
+                <tab.icon className="h-4 w-4" /> {tab.label}
+              </button>
+            ))}
           </div>
+          <Button variant="outline" className="rounded-2xl px-6 h-14" onClick={handleLogout}>Logout</Button>
         </div>
+
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'users' && renderUserManagement()}
+        {activeTab === 'logs' && renderLogs()}
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        {/* Navigation Tabs */}
-        <div className="flex space-x-2 bg-white/50 p-2 rounded-2xl border border-gray-100 mb-10 w-fit">
-          {[
-            { id: 'dashboard', label: 'Overview', icon: BarChart3 },
-            { id: 'users', label: 'User Hub', icon: Users },
-            { id: 'logs', label: 'Audit Logs', icon: FileText },
-            { id: 'settings', label: 'Config', icon: Settings },
-            { id: 'security', label: 'Firewall', icon: Shield }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-6 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === tab.id
-                ? 'bg-slate-900 text-white shadow-xl shadow-slate-200'
-                : 'text-gray-500 hover:bg-white hover:text-gray-900'
-                }`}
-            >
-              <tab.icon className="h-4 w-4 mr-3" />
-              {tab.label}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40">
+          <Card className="w-full max-w-lg bg-white rounded-[48px] border-0 shadow-3xl p-12 relative text-slate-900">
+            <button onClick={() => setIsSettingsModalOpen(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors">
+              <X className="h-6 w-6 text-slate-400" />
             </button>
-          ))}
-        </div>
-
-        {renderContent()}
-      </div>
-
-      {/* Add User Modal */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl relative">
-            <button onClick={() => setIsUserModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
-            <div className="text-center mb-8">
-              <div className="h-16 w-16 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <UserIcon className="h-8 w-8" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">New Administrator</h3>
-              <p className="text-sm text-gray-500 mt-1">Assign roles and dashboard access</p>
+            <h3 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">System Settings</h3>
+            <p className="text-slate-500 font-medium mb-10 text-sm">Configure global system parameters.</p>
+            <div className="space-y-6">
+              <p className="text-sm font-bold text-slate-600">Settings are managed in the global settings page.</p>
+              <Button variant="primary" className="w-full h-14 rounded-2xl" onClick={() => navigate('/settings')}>Go to Settings</Button>
             </div>
+          </Card>
+        </div>
+      )}
 
-            <form onSubmit={handleAddUser} className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Login Username</label>
+      {/* Modals */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-lg bg-white rounded-[32px] border-0 shadow-3xl p-10 relative">
+            <button onClick={() => setIsUserModalOpen(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors text-slate-900">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">New User</h3>
+            <p className="text-slate-500 font-medium mb-10 text-sm">Create a new system account.</p>
+
+            <form onSubmit={handleCreateUser} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input required placeholder="eg. manager_john" className="w-full pl-10 p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} />
+                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Corporate Email</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input required type="email" placeholder="john@gympro.com" className="w-full pl-10 p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">System Role</label>
-                <select className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value as User['role'] })}>
-                  <option value="owner">System Owner</option>
-                  <option value="admin">Administrator</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff Member</option>
-                </select>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role</label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <select
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer text-slate-900"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as User['role'] })}
+                  >
+                    <option value="staff">Staff</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
               </div>
-              <div className="pt-4 grid grid-cols-2 gap-4">
-                <Button type="button" variant="outline" className="rounded-2xl py-4" onClick={() => setIsUserModalOpen(false)}>Abort</Button>
-                <Button type="submit" variant="primary" className="rounded-2xl py-4 shadow-xl shadow-blue-200" loading={submitLoading}>Provision User</Button>
-              </div>
+              <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]" loading={submitLoading}>Create User</Button>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Edit User Modal */}
-      {isEditUserModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl relative">
-            <button onClick={() => setIsEditUserModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
-            <div className="text-center mb-8">
-              <div className="h-16 w-16 bg-green-100 text-green-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Edit className="h-8 w-8" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">Modify Account</h3>
-              <p className="text-sm text-gray-500 mt-1">Update administrative privileges</p>
-            </div>
+      {isEditUserModalOpen && selectedUser && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-lg bg-white rounded-[32px] border-0 shadow-3xl p-10 relative">
+            <button onClick={() => setIsEditUserModalOpen(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors text-slate-900">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <h3 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">Edit User</h3>
+            <p className="text-slate-500 font-medium mb-10 text-sm">Update account details.</p>
 
-            <form onSubmit={handleUpdateUser} className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Username</label>
-                <input required className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={formData.username} onChange={e => setFormData({ ...formData, username: e.target.value })} />
+            <form onSubmit={handleUpdateUser} className="space-y-6">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Username</label>
+                <div className="relative">
+                  <UserIcon className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Email</label>
-                <input required type="email" className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl outline-none focus:ring-4 focus:ring-blue-100" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                <div className="relative">
+                  <Mail className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <input
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all text-slate-900"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Role</label>
-                <select className="w-full p-4 bg-gray-50 border border-gray-100 rounded-2xl font-bold outline-none" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value as User['role'] })}>
-                  <option value="owner">Owner</option>
-                  <option value="admin">Admin</option>
-                  <option value="manager">Manager</option>
-                  <option value="staff">Staff</option>
-                </select>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Role</label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <select
+                    className="w-full pl-14 pr-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-bold text-sm focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer text-slate-900"
+                    value={formData.role}
+                    onChange={(e) => setFormData({ ...formData, role: e.target.value as User['role'] })}
+                  >
+                    <option value="staff">Staff</option>
+                    <option value="manager">Manager</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
               </div>
-              <div className="pt-4 grid grid-cols-2 gap-4">
-                <Button type="button" variant="outline" className="rounded-2xl py-4" onClick={() => setIsEditUserModalOpen(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" className="rounded-2xl py-4 shadow-xl shadow-green-200" loading={submitLoading}>Save Profile</Button>
-              </div>
+              <Button type="submit" variant="primary" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest text-[10px]" loading={submitLoading}>Update User</Button>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* View User Modal */}
       {isViewUserModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <Card className="max-w-md w-full p-10 relative bg-white border-0 shadow-2xl rounded-[40px]">
-            <button onClick={() => setIsViewUserModalOpen(false)} className="absolute top-8 right-8 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
-            <div className="text-center">
-              <div className="h-24 w-24 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-blue-500/20">
-                <UserIcon className="h-10 w-10 text-white" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-slate-900/40 text-slate-900">
+          <Card className="w-full max-w-lg bg-white rounded-[32px] border-0 shadow-3xl p-10 relative animate-in zoom-in-95 duration-300">
+            <button onClick={() => setIsViewUserModalOpen(false)} className="absolute top-8 right-8 p-3 hover:bg-slate-100 rounded-2xl transition-colors text-slate-900">
+              <X className="h-6 w-6 text-slate-400" />
+            </button>
+            <div className="flex items-center gap-6 mb-10">
+              <div className="h-20 w-20 rounded-3xl bg-slate-900 text-white flex items-center justify-center text-3xl font-black">
+                {selectedUser.username[0]}
               </div>
-              <h3 className="text-2xl font-extrabold text-gray-900">{selectedUser.username}</h3>
-              <p className="text-sm font-bold text-gray-400 mt-1 uppercase tracking-widest">{selectedUser.role} Account</p>
-
-              <div className="mt-10 grid grid-cols-1 gap-4 text-left">
-                <div className="p-4 bg-gray-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Email Address</p>
-                  <p className="text-sm font-bold text-gray-900 mt-1">{selectedUser.email}</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Account Status</p>
-                  <p className="text-sm font-bold text-green-600 mt-1 capitalize">{selectedUser.status}</p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-2xl">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Permissions</p>
-                  <p className="text-sm font-bold text-gray-900 mt-1">{selectedUser.permissions.join(', ') || 'No special permissions'}</p>
-                </div>
+              <div>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight">{selectedUser.username}</h3>
+                <span className={`px-4 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border mt-2 inline-block ${getRoleStyle(selectedUser.role)}`}>
+                  {selectedUser.role}
+                </span>
               </div>
-
-              <Button variant="outline" className="w-full mt-10 rounded-2xl py-4 text-gray-400" onClick={() => setIsViewUserModalOpen(false)}>Close Profile</Button>
             </div>
+
+            <div className="grid grid-cols-1 gap-6 mb-10">
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email</p>
+                <p className="font-bold text-slate-900">{selectedUser.email || 'N/A'}</p>
+              </div>
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">User ID</p>
+                <p className="font-bold text-slate-900">{selectedUser.id}</p>
+              </div>
+              <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Joined</p>
+                <p className="font-bold text-slate-900">{new Date(selectedUser.created_at || Date.now()).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <Button variant="outline" className="w-full h-14 rounded-2xl" onClick={() => setIsViewUserModalOpen(false)}>Close</Button>
           </Card>
         </div>
       )}
-      {/* Settings Modal */}
-      {isSettingsModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl relative">
-            <button onClick={() => setIsSettingsModalOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-gray-600"><X className="h-6 w-6" /></button>
-            <div className="text-center mb-8">
-              <div className="h-16 w-16 bg-purple-100 text-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <Settings className="h-8 w-8" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900">System Config</h3>
-              <p className="text-sm text-gray-500 mt-1">Update global system parameters</p>
-            </div>
 
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-xl border border-dashed border-gray-200">
-                System settings are currently managed via the database configuration. Any changes here will be applied across the entire GymPro network.
-              </p>
-              <div className="pt-4 grid grid-cols-1 gap-4">
-                <Button variant="primary" className="rounded-2xl py-4 shadow-xl shadow-purple-200" onClick={() => {
-                  showNotification('Global settings updated', 'success');
-                  setIsSettingsModalOpen(false);
-                }}>Synchronize Config</Button>
-                <Button variant="outline" className="rounded-2xl py-4" onClick={() => setIsSettingsModalOpen(false)}>Close</Button>
-              </div>
-            </div>
+      {/* Notifications */}
+      {notification && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] animate-in slide-in-from-bottom-10">
+          <div className={`px-8 py-4 rounded-2xl shadow-2xl font-black text-xs uppercase tracking-widest border backdrop-blur-xl ${notification.type === 'success' ? 'bg-emerald-500/90 text-white border-emerald-400' : 'bg-rose-500/90 text-white border-rose-400'}`}>
+            {notification.message}
           </div>
         </div>
       )}

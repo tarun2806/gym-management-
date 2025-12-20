@@ -7,6 +7,7 @@ export interface User {
     role: Role;
     status?: 'active' | 'inactive' | 'suspended';
     lastLogin?: string;
+    created_at?: string;
     permissions: string[];
     app_metadata?: {
         role?: string;

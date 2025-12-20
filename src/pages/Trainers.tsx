@@ -1,6 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Search, Plus, Star, Mail, Phone, MapPin, Edit, Trash2, Eye, X } from 'lucide-react';
-import { Button } from '../components';
+
+import React, { useState, useEffect } from 'react';
+import {
+  Plus,
+  Search,
+  Mail,
+  Star,
+  Trash2,
+  X,
+  User,
+  Award,
+  Briefcase,
+  Zap,
+  MapPin,
+  Smartphone,
+  Shield,
+  Eye,
+  Edit,
+  Target
+} from 'lucide-react';
+import { Button, Card } from '../components';
 import { supabase } from '../lib/supabase';
 
 interface Trainer {
@@ -18,23 +36,22 @@ interface Trainer {
 }
 
 const Trainers: React.FC = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [trainers, setTrainers] = useState<Trainer[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('all');
 
+  // Form state for new trainer
   const [newTrainer, setNewTrainer] = useState({
     name: '',
     email: '',
     phone: '',
     specialization: 'General Fitness',
-    experience: '1 year',
+    experience: '1 Year',
     rating: 5.0,
     status: 'Active',
     location: 'Main Gym',
@@ -53,16 +70,11 @@ const Trainers: React.FC = () => {
       const { data, error } = await supabase
         .from('trainers')
         .select('*')
-        .order('name', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching trainers:', error);
-        setTrainers([]);
-      } else {
-        setTrainers(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching trainers:', error);
+        .order('name');
+      if (error) throw error;
+      setTrainers(data || []);
+    } catch (err) {
+      console.error('Error fetching trainers:', err);
     } finally {
       setLoading(false);
     }
@@ -77,14 +89,13 @@ const Trainers: React.FC = () => {
         .insert([newTrainer]);
 
       if (error) throw error;
-
       setShowAddModal(false);
       setNewTrainer({
         name: '',
         email: '',
         phone: '',
         specialization: 'General Fitness',
-        experience: '1 year',
+        experience: '1 Year',
         rating: 5.0,
         status: 'Active',
         location: 'Main Gym',
@@ -92,9 +103,9 @@ const Trainers: React.FC = () => {
         hourly_rate: 50
       });
       fetchTrainers();
-    } catch (error: any) {
-      console.error('Error adding trainer:', error);
-      alert(`Failed to add trainer: ${error.message || 'Please ensure the trainers table exists in Supabase.'}`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to add trainer');
     } finally {
       setSubmitLoading(false);
     }
@@ -121,28 +132,36 @@ const Trainers: React.FC = () => {
         .eq('id', selectedTrainer.id);
 
       if (error) throw error;
-
       setShowEditModal(false);
       fetchTrainers();
-    } catch (error: any) {
-      console.error('Error updating trainer:', error);
-      alert(`Failed to update trainer: ${error.message}`);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update trainer');
     } finally {
       setSubmitLoading(false);
     }
   };
 
   const handleDeleteTrainer = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this trainer?')) return;
+    if (!confirm('Are you sure you want to remove this elite professional?')) return;
     try {
-      const { error } = await supabase.from('trainers').delete().eq('id', id);
+      const { error } = await supabase
+        .from('trainers')
+        .delete()
+        .eq('id', id);
       if (error) throw error;
       fetchTrainers();
-    } catch (error: any) {
-      console.error('Error deleting trainer:', error);
-      alert(`Failed to delete trainer: ${error.message}`);
+    } catch (err) {
+      console.error(err);
     }
   };
+
+  const filteredTrainers = trainers.filter(trainer => {
+    const matchesSearch = trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      trainer.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = selectedFilter === 'all' || trainer.status.toLowerCase() === selectedFilter;
+    return matchesSearch && matchesFilter;
+  });
 
   const openEditModal = (trainer: Trainer) => {
     setSelectedTrainer({ ...trainer });
@@ -154,234 +173,352 @@ const Trainers: React.FC = () => {
     setShowViewModal(true);
   };
 
-  const filteredTrainers = trainers.filter(trainer => {
-    const matchesSearch = trainer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      trainer.specialization.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || trainer.status.toLowerCase() === selectedFilter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-12 animate-in fade-in duration-500">
+      {/* Header Block */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Trainers</h1>
-          <p className="text-gray-600">Manage your gym trainers and their specializations</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Trainers</h1>
+          <p className="text-slate-500 mt-1 text-base">Manage your gym's training staff.</p>
         </div>
-        <Button variant="primary" icon={Plus} onClick={() => setShowAddModal(true)}>
-          Add Trainer
-        </Button>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              type="text"
-              placeholder="Search trainers..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg"
-            />
-          </div>
-          <select
-            value={selectedFilter}
-            onChange={(e) => setSelectedFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2"
-          >
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" className="rounded-xl border-slate-200 px-4 h-10 text-sm" icon={Shield}>
+            Logs
+          </Button>
+          <Button variant="primary" className="rounded-xl bg-slate-900 hover:bg-black px-6 h-10 border-0 shadow-md text-sm" icon={Plus} onClick={() => setShowAddModal(true)}>
+            Add Trainer
+          </Button>
         </div>
       </div>
 
-      {/* Trainers Grid */}
+      {/* Search & Filters */}
+      <div className="flex flex-col md:flex-row items-center gap-4">
+        <div className="relative flex-1 group">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-300 h-4 w-4 group-focus-within:text-blue-500 transition-colors" />
+          <input
+            type="text"
+            placeholder="Search trainers..."
+            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-100 rounded-xl shadow-lg shadow-slate-50 focus:ring-4 focus:ring-blue-50 outline-none transition-all font-bold text-sm"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <select
+          value={selectedFilter}
+          onChange={(e) => setSelectedFilter(e.target.value)}
+          className="h-11 px-4 bg-white border border-slate-100 rounded-xl shadow-md outline-none font-bold text-slate-500 cursor-pointer appearance-none min-w-[140px] text-sm"
+        >
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      {/* Trainer Grid */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading trainers...</div>
-      ) : filteredTrainers.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <Mail className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-500">No trainers found. Please add them in Supabase.</p>
+        <div className="p-12 text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-slate-900 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p className="text-slate-500 font-bold text-sm">Loading trainers...</p>
         </div>
+      ) : filteredTrainers.length === 0 ? (
+        <Card className="rounded-2xl border-slate-100 p-12 text-center shadow-lg shadow-slate-200/40">
+          <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-200">
+            <User className="h-8 w-8" />
+          </div>
+          <h3 className="text-xl font-black text-slate-900">No Trainers Found</h3>
+          <p className="text-slate-500 mt-1 text-sm">No trainers match your search.</p>
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTrainers.map((trainer) => (
-            <div key={trainer.id} className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-200">
+            <Card key={trainer.id} className="rounded-2xl border-0 shadow-xl shadow-slate-200/40 hover:shadow-indigo-100 transition-all duration-300 group overflow-hidden bg-white">
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{trainer.name}</h3>
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                      {trainer.specialization}
-                    </span>
+                <div className="flex justify-between items-start mb-6">
+                  <div className="relative">
+                    <div className="h-16 w-16 rounded-xl bg-slate-100 flex items-center justify-center font-black text-xl text-slate-400 overflow-hidden shadow-inner">
+                      {trainer.name[0]}
+                    </div>
+                    <div className={`absolute -bottom-1 -right-1 h-5 w-5 rounded-lg border-2 border-white flex items-center justify-center ${trainer.status.toLowerCase() === 'active' ? 'bg-emerald-400' : 'bg-slate-300'}`}>
+                      <Shield className="h-2 w-2 text-white" />
+                    </div>
                   </div>
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(trainer.status)}`}>
-                    {trainer.status}
-                  </span>
-                </div>
-
-                <div className="flex items-center mb-3">
-                  <div className="flex items-center">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className={`h-4 w-4 ${i < Math.floor(trainer.rating) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`} />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-600">{trainer.rating}</span>
-                </div>
-
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">{trainer.bio}</p>
-
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center text-sm text-gray-600"><Mail className="h-4 w-4 mr-2" /><span>{trainer.email}</span></div>
-                  <div className="flex items-center text-sm text-gray-600"><Phone className="h-4 w-4 mr-2" /><span>{trainer.phone}</span></div>
-                  <div className="flex items-center text-sm text-gray-600"><MapPin className="h-4 w-4 mr-2" /><span>{trainer.location}</span></div>
-                </div>
-
-                <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      className="text-blue-600 hover:text-blue-900 p-2"
-                      onClick={() => openViewModal(trainer)}
-                    >
+                  <div className="flex gap-1.5">
+                    <button onClick={() => openViewModal(trainer)} className="p-2 bg-slate-50 text-slate-400 hover:text-blue-600 rounded-lg transition-all">
                       <Eye className="h-4 w-4" />
                     </button>
-                    <button
-                      className="text-green-600 hover:text-green-900 p-2"
-                      onClick={() => openEditModal(trainer)}
-                    >
+                    <button onClick={() => openEditModal(trainer)} className="p-2 bg-slate-50 text-slate-400 hover:text-emerald-600 rounded-lg transition-all">
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={() => handleDeleteTrainer(trainer.id)}
-                      className="text-red-600 hover:text-red-900 p-2"
-                    >
+                    <button onClick={() => handleDeleteTrainer(trainer.id)} className="p-2 bg-slate-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-                  <div className="text-sm font-bold text-gray-900">${trainer.hourly_rate}/hr</div>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-xl font-black text-slate-900 tracking-tight">{trainer.name}</h3>
+                  <div className="inline-flex items-center px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest border border-blue-100">
+                    <Zap className="h-2.5 w-2.5 mr-1.5" />
+                    {trainer.specialization}
+                  </div>
+                  <p className="text-slate-500 text-xs font-medium leading-relaxed italic line-clamp-2">
+                    "{trainer.bio || 'No bio provided.'}"
+                  </p>
+                </div>
+
+                <div className="mt-6 grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-white transition-colors">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Exp</p>
+                    <p className="text-xs font-black text-slate-900">{trainer.experience}</p>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 group-hover:bg-white transition-colors">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Rating</p>
+                    <div className="flex items-center text-xs font-black text-slate-900">
+                      {trainer.rating} <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400 ml-1" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-slate-50 flex gap-3">
+                  <a href={`tel:${trainer.phone}`} className="flex-1 h-10 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:scale-105 transition-transform">
+                    <Smartphone className="h-4 w-4" />
+                  </a>
+                  <a href={`mailto:${trainer.email}`} className="flex-1 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center hover:scale-105 transition-transform shadow-md shadow-blue-50">
+                    <Mail className="h-4 w-4" />
+                  </a>
+                  <div className="flex-1 flex items-center justify-center font-black text-slate-900 text-sm">
+                    ${trainer.hourly_rate}<span className="text-[9px] text-slate-400 ml-1">/hr</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
       )}
 
       {/* Add Trainer Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
-            <button onClick={() => setShowAddModal(false)} className="absolute top-4 right-4 text-gray-400"><X className="h-5 w-5" /></button>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Trainer</h2>
-            <form onSubmit={handleAddTrainer} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input required type="text" className="w-full border p-2 rounded-lg" value={newTrainer.name} onChange={e => setNewTrainer({ ...newTrainer, name: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input required type="email" className="w-full border p-2 rounded-lg" value={newTrainer.email} onChange={e => setNewTrainer({ ...newTrainer, email: e.target.value })} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="fixed inset-0 bg-slate-900/10 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <Card className="max-w-2xl w-full p-0 rounded-2xl border-0 shadow-2xl bg-white overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex flex-col md:flex-row">
+              <div className="md:w-1/3 bg-slate-900 p-8 text-white flex flex-col justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Phone</label>
-                  <input type="text" className="w-full border p-2 rounded-lg" value={newTrainer.phone} onChange={e => setNewTrainer({ ...newTrainer, phone: e.target.value })} />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Specialization</label>
-                  <input type="text" className="w-full border p-2 rounded-lg" value={newTrainer.specialization} onChange={e => setNewTrainer({ ...newTrainer, specialization: e.target.value })} />
+                  <h2 className="text-2xl font-bold tracking-tight">Add Trainer</h2>
+                  <p className="text-slate-400 mt-4 text-sm">Enter details to add a new trainer.</p>
                 </div>
               </div>
-              <div className="pt-4 flex space-x-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowAddModal(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" className="flex-1" loading={submitLoading}>Add Trainer</Button>
+
+              <div className="flex-1 p-8 md:p-10 relative">
+                <button onClick={() => setShowAddModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+
+                <form onSubmit={handleAddTrainer} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Name</label>
+                      <input
+                        type="text"
+                        required
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm transition-all"
+                        placeholder="Name..."
+                        value={newTrainer.name}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                      <input
+                        type="email"
+                        required
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm transition-all"
+                        placeholder="email@example.com"
+                        value={newTrainer.email}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, email: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Specialization</label>
+                      <input
+                        type="text"
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm"
+                        placeholder="Specialty..."
+                        value={newTrainer.specialization}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, specialization: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Experience</label>
+                      <input
+                        type="text"
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm"
+                        placeholder="Years..."
+                        value={newTrainer.experience}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, experience: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Rate ($)</label>
+                      <input
+                        type="number"
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm"
+                        value={newTrainer.hourly_rate}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, hourly_rate: parseInt(e.target.value) })}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Location</label>
+                      <input
+                        type="text"
+                        className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm"
+                        placeholder="Room..."
+                        value={newTrainer.location}
+                        onChange={(e) => setNewTrainer({ ...newTrainer, location: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bio</label>
+                    <textarea
+                      className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 outline-none text-sm min-h-[80px]"
+                      value={newTrainer.bio}
+                      onChange={(e) => setNewTrainer({ ...newTrainer, bio: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-4">
+                    <Button type="button" variant="outline" className="flex-1 rounded-xl py-3 text-xs" onClick={() => setShowAddModal(false)}>Cancel</Button>
+                    <Button type="submit" variant="primary" className="flex-2 rounded-xl py-3 bg-slate-900 border-0 shadow-lg text-xs" loading={submitLoading}>Add Trainer</Button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
+            </div>
+          </Card>
         </div>
       )}
+
       {/* Edit Trainer Modal */}
       {showEditModal && selectedTrainer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 relative">
-            <button onClick={() => setShowEditModal(false)} className="absolute top-4 right-4 text-gray-400"><X className="h-5 w-5" /></button>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit Trainer</h2>
+        <div className="fixed inset-0 bg-slate-900/10 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <Card className="max-w-xl w-full p-8 rounded-2xl border-0 shadow-2xl bg-white overflow-hidden animate-in zoom-in-95 duration-200 relative">
+            <button onClick={() => setShowEditModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="mb-8 text-center">
+              <h2 className="text-2xl font-bold text-slate-900">Edit Trainer</h2>
+              <p className="text-slate-500 mt-1 text-sm italic">{selectedTrainer.name}</p>
+            </div>
+
             <form onSubmit={handleUpdateTrainer} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Full Name</label>
-                <input required type="text" className="w-full border p-2 rounded-lg" value={selectedTrainer.name} onChange={e => setSelectedTrainer({ ...selectedTrainer, name: e.target.value })} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Specialization</label>
-                <input required type="text" className="w-full border p-2 rounded-lg" value={selectedTrainer.specialization} onChange={e => setSelectedTrainer({ ...selectedTrainer, specialization: e.target.value })} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Name</label>
+                  <input type="text" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 text-sm outline-none" value={selectedTrainer.name} onChange={e => setSelectedTrainer({ ...selectedTrainer, name: e.target.value })} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Specialization</label>
+                  <input type="text" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 text-sm outline-none" value={selectedTrainer.specialization} onChange={e => setSelectedTrainer({ ...selectedTrainer, specialization: e.target.value })} />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Hourly Rate ($)</label>
-                  <input type="number" className="w-full border p-2 rounded-lg" value={selectedTrainer.hourly_rate} onChange={e => setSelectedTrainer({ ...selectedTrainer, hourly_rate: parseInt(e.target.value) })} />
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Rate ($)</label>
+                  <input type="number" className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 text-sm outline-none" value={selectedTrainer.hourly_rate} onChange={e => setSelectedTrainer({ ...selectedTrainer, hourly_rate: parseInt(e.target.value) })} />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <select className="w-full border p-2 rounded-lg" value={selectedTrainer.status} onChange={e => setSelectedTrainer({ ...selectedTrainer, status: e.target.value })}>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Status</label>
+                  <select className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 text-sm outline-none" value={selectedTrainer.status} onChange={e => setSelectedTrainer({ ...selectedTrainer, status: e.target.value })}>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Bio</label>
-                <textarea className="w-full border p-2 rounded-lg" rows={3} value={selectedTrainer.bio} onChange={e => setSelectedTrainer({ ...selectedTrainer, bio: e.target.value })} />
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Bio</label>
+                <textarea className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-4 focus:ring-blue-50 text-sm outline-none min-h-[80px]" value={selectedTrainer.bio} onChange={e => setSelectedTrainer({ ...selectedTrainer, bio: e.target.value })} />
               </div>
-              <div className="pt-4 flex space-x-3">
-                <Button type="button" variant="outline" className="flex-1" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                <Button type="submit" variant="primary" className="flex-1" loading={submitLoading}>Save Changes</Button>
+
+              <div className="flex gap-3 pt-6">
+                <Button type="button" variant="outline" className="flex-1 rounded-xl py-3 text-xs" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                <Button type="submit" variant="primary" className="flex-2 rounded-xl py-3 bg-blue-600 text-xs shadow-lg" loading={submitLoading}>Save Changes</Button>
               </div>
             </form>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* View Trainer Modal */}
       {showViewModal && selectedTrainer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-8 relative">
-            <button onClick={() => setShowViewModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X className="h-5 w-5" /></button>
-            <div className="text-center mb-6">
-              <div className="h-24 w-24 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mx-auto mb-4">
-                <Star className="h-10 w-10 fill-current" />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <Card className="max-w-lg w-full p-0 rounded-2xl border-0 shadow-2xl bg-white overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 relative">
+              <button onClick={() => setShowViewModal(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="text-center mb-8">
+                <div className="h-20 w-20 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 shadow-inner overflow-hidden">
+                  <div className="text-3xl font-black text-slate-300">{selectedTrainer.name[0]}</div>
+                </div>
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight">{selectedTrainer.name}</h2>
+                <p className="text-blue-600 font-bold uppercase tracking-widest text-[9px] mt-2 flex items-center justify-center">
+                  <Award className="h-3.5 w-3.5 mr-1.5" />
+                  {selectedTrainer.specialization}
+                </p>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">{selectedTrainer.name}</h2>
-              <p className="text-blue-600 font-medium">{selectedTrainer.specialization}</p>
+
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center">
+                      <Briefcase className="h-3 w-3 mr-1.5" /> Experience
+                    </p>
+                    <p className="text-sm font-black text-slate-900">{selectedTrainer.experience}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center">
+                      <Target className="h-3 w-3 mr-1.5" /> Rating
+                    </p>
+                    <p className="text-sm font-black text-slate-900 flex items-center">
+                      {selectedTrainer.rating} <Star className="h-3 w-3 fill-amber-400 text-amber-400 ml-1.5" />
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Bio</p>
+                  <p className="text-slate-600 text-sm leading-relaxed italic text-center">
+                    "{selectedTrainer.bio || 'No bio provided.'}"
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-500 bg-white p-3 rounded-xl border border-slate-50">
+                    <Mail className="h-4 w-4 text-blue-500" />
+                    {selectedTrainer.email}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs font-bold text-slate-500 bg-white p-3 rounded-xl border border-slate-50">
+                    <MapPin className="h-4 w-4 text-rose-500" />
+                    {selectedTrainer.location}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-8">
+                <Button variant="primary" className="w-full rounded-xl py-3 bg-slate-900 font-black uppercase tracking-widest text-[10px]" onClick={() => setShowViewModal(false)}>
+                  Close
+                </Button>
+              </div>
             </div>
-            <div className="space-y-4 border-t border-gray-100 pt-6">
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="text-xs font-bold text-gray-400 uppercase mb-2">About Trainer</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">{selectedTrainer.bio || 'No bio available for this trainer.'}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col"><span className="text-gray-500 text-xs text-center">Hourly Rate</span><span className="font-bold text-gray-900 text-center">${selectedTrainer.hourly_rate}/hr</span></div>
-                <div className="flex flex-col"><span className="text-gray-500 text-xs text-center">Experience</span><span className="font-bold text-gray-900 text-center">{selectedTrainer.experience}</span></div>
-              </div>
-              <div className="flex justify-between items-center text-sm pt-2">
-                <span className="text-gray-500 flex items-center"><Mail className="h-4 w-4 mr-2" /> {selectedTrainer.email}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(selectedTrainer.status)}`}>{selectedTrainer.status}</span>
-              </div>
-            </div>
-            <div className="mt-8">
-              <Button variant="outline" className="w-full" onClick={() => setShowViewModal(false)}>Close Profile</Button>
-            </div>
-          </div>
+          </Card>
         </div>
       )}
     </div>

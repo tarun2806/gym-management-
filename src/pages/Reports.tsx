@@ -5,29 +5,35 @@ import {
     TrendingUp,
     Users,
     DollarSign,
-    Calendar,
-    ChevronDown,
     Download,
     PieChart as PieChartIcon,
     Activity,
     ArrowUpRight,
-    ArrowDownRight
+    ArrowDownRight,
+    Zap,
+    Target,
+    Shield,
+    Globe,
+    Filter,
+    Layers,
+    History
 } from 'lucide-react';
 import {
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    LineChart,
-    Line,
     Cell,
     PieChart,
-    Pie
+    Pie,
+    AreaChart,
+    Area
 } from 'recharts';
 import { supabase } from '../lib/supabase';
+import { Button, Card } from '../components';
+
+const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
 const Reports: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -38,8 +44,8 @@ const Reports: React.FC = () => {
         attendanceToday: 0
     });
 
-    const [revenueData, setRevenueData] = useState<any[]>([]);
-    const [membershipDistribution, setMembershipDistribution] = useState<any[]>([]);
+    const [revenueData, setRevenueData] = useState<{ name: string, amount: number }[]>([]);
+    const [membershipDistribution, setMembershipDistribution] = useState<{ name: string, value: number }[]>([]);
 
     useEffect(() => {
         fetchReportData();
@@ -49,34 +55,33 @@ const Reports: React.FC = () => {
         try {
             setLoading(true);
 
-            // 1. Basic Stats
-            const { count: memberCount } = await supabase.from('members').select('*', { count: 'exact', head: true });
-            const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'completed');
-            const { count: classCount } = await supabase.from('classes').select('*', { count: 'exact', head: true });
-            const { count: attendanceCount } = await supabase.from('attendance')
-                .select('*', { count: 'exact', head: true })
-                .gte('check_in', new Date().toISOString().split('T')[0]);
-
-            const totalRev = payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
-
-            setStats({
-                totalMembers: memberCount || 0,
-                monthlyRevenue: totalRev,
-                activeClasses: classCount || 0,
-                attendanceToday: attendanceCount || 0
-            });
-
-            // 2. Revenue over time (Last 6 months - Mocking aggregate for demo as standard SQL aggregate might be complex for simple select)
-            setRevenueData([
-                { name: 'Jul', amount: 4500 },
-                { name: 'Aug', amount: 5200 },
-                { name: 'Sep', amount: 4800 },
-                { name: 'Oct', amount: 6100 },
-                { name: 'Nov', amount: 5900 },
-                { name: 'Dec', amount: totalRev > 0 ? totalRev : 7200 }
+            // Fetch core metrics
+            const [{ count: mCount }, { data: pmts }, { count: cCount }, { count: aCount }] = await Promise.all([
+                supabase.from('members').select('*', { count: 'exact', head: true }),
+                supabase.from('payments').select('amount').eq('status', 'completed'),
+                supabase.from('classes').select('*', { count: 'exact', head: true }),
+                supabase.from('attendance').select('*', { count: 'exact', head: true }).gte('check_in', new Date().toISOString().split('T')[0])
             ]);
 
-            // 3. Membership Distribution
+            const totalRev = pmts?.reduce((acc, p) => acc + p.amount, 0) || 0;
+
+            setStats({
+                totalMembers: mCount || 0,
+                monthlyRevenue: totalRev,
+                activeClasses: cCount || 0,
+                attendanceToday: aCount || 0
+            });
+
+            // Simulated Historical Data for Visualization
+            setRevenueData([
+                { name: 'Jan', amount: 4800 },
+                { name: 'Feb', amount: 5600 },
+                { name: 'Mar', amount: 5200 },
+                { name: 'Apr', amount: 7400 },
+                { name: 'May', amount: 6900 },
+                { name: 'Jun', amount: totalRev > 0 ? totalRev : 8200 }
+            ]);
+
             const { data: members } = await supabase.from('members').select('membership_type');
             const dist: Record<string, number> = {};
             members?.forEach(m => {
@@ -88,175 +93,198 @@ const Reports: React.FC = () => {
             );
 
         } catch (error) {
-            console.error('Error fetching report data:', error);
+            console.error('Failed to load report data:', error);
         } finally {
             setLoading(false);
         }
     };
 
-    const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-
-    if (loading) return <div className="p-12 text-center text-gray-400">Loading analytics dashboard...</div>;
+    if (loading) {
+        return (
+            <div className="h-[80vh] flex flex-col items-center justify-center gap-6">
+                <div className="h-16 w-16 bg-slate-900 rounded-[28px] flex items-center justify-center animate-bounce shadow-2xl">
+                    <Activity className="h-8 w-8 text-white animate-pulse" />
+                </div>
+                <div className="flex flex-col items-center">
+                    <h2 className="text-xl font-black text-slate-900 tracking-tight">Syncing Data...</h2>
+                    <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-2">Connecting to secure database</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="space-y-8 pb-12">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-12 pb-24 animate-in fade-in duration-700">
+            {/* Header Block */}
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Analytics & Insights</h1>
-                    <p className="text-gray-600">Performance tracking and gym operations overview</p>
+                    <div className="flex items-center gap-2 text-indigo-600 font-black uppercase tracking-widest text-[10px] mb-3">
+                        <BarChart3 className="h-4 w-4" /> Intelligence Dashboard
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">Gym Analytics</h1>
+                    <p className="text-slate-400 font-medium mt-1">Real-time performance metrics and user growth mapping.</p>
                 </div>
-                <div className="flex items-center space-x-3">
-                    <button className="flex items-center px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Last 30 Days
-                        <ChevronDown className="h-4 w-4 ml-2" />
-                    </button>
-                    <button className="flex items-center px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export Report
-                    </button>
+                <div className="flex gap-4">
+                    <Button variant="outline" className="rounded-2xl px-6 h-14" icon={Filter}>Filters</Button>
+                    <Button variant="primary" className="rounded-2xl px-6 h-14 shadow-xl shadow-indigo-200" icon={Download}>Export</Button>
                 </div>
             </div>
 
-            {/* Top Stat Cards */}
+            {/* Metrics Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {[
-                    { label: 'Total Members', value: stats.totalMembers, icon: Users, color: 'blue', change: '+5.2%', up: true },
-                    { label: 'Monthly Revenue', value: `$${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, color: 'green', change: '+12.4%', up: true },
-                    { label: 'Daily Attendance', value: stats.attendanceToday, icon: Activity, color: 'purple', change: '-2.1%', up: false },
-                    { label: 'Active Classes', value: stats.activeClasses, icon: BarChart3, color: 'orange', change: 'Stable', up: true },
-                ].map((item, idx) => (
-                    <div key={idx} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group">
-                        <div className={`absolute top-0 right-0 p-3 bg-${item.color}-50 text-${item.color}-600 rounded-bl-3xl opacity-50 group-hover:opacity-100 transition-opacity`}>
-                            <item.icon className="h-6 w-6" />
+                    { label: 'Total Members', val: stats.totalMembers, icon: Users, up: true, change: '12%', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                    { label: 'Monthly Revenue', val: `₹${stats.monthlyRevenue.toLocaleString()}`, icon: DollarSign, up: true, change: '8%', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                    { label: 'Active Classes', val: stats.activeClasses, icon: Layers, up: false, change: '2%', color: 'text-amber-600', bg: 'bg-amber-50' },
+                    { label: 'Today Attendance', val: stats.attendanceToday, icon: Activity, up: true, change: '5%', color: 'text-rose-600', bg: 'bg-rose-50' }
+                ].map((item, i) => (
+                    <Card key={i} className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all">
+                        <div className="flex justify-between items-start mb-4">
+                            <div className={`h-10 w-10 ${item.bg} ${item.color} rounded-xl flex items-center justify-center shadow-inner`}>
+                                <item.icon className="h-5 w-5" />
+                            </div>
                         </div>
-                        <p className="text-sm font-medium text-gray-500 mb-1">{item.label}</p>
-                        <h3 className="text-2xl font-bold text-gray-900 mb-4">{item.value}</h3>
-                        <div className="flex items-center">
-                            {item.up ? (
-                                <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
-                            ) : (
-                                <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
-                            )}
-                            <span className={`text-xs font-bold ${item.up ? 'text-green-500' : 'text-red-500'}`}>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{item.label}</p>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight mb-3">{item.val}</h3>
+                        <div className="flex items-center gap-3">
+                            <div className={`flex items-center gap-1 text-[9px] font-black px-2 py-0.5 rounded-full ${item.up ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {item.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                                 {item.change}
-                            </span>
-                            <span className="text-xs text-gray-400 ml-2 text-center">Since last month</span>
+                            </div>
+                            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">vs last month</span>
                         </div>
-                    </div>
+                    </Card>
                 ))}
             </div>
 
-            {/* Charts Section */}
+            {/* Visualizations */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Revenue Chart */}
-                <div className="lg:col-span-2 bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                <Card className="lg:col-span-2 bg-white p-8 rounded-3xl border-0 shadow-xl shadow-slate-200/50">
                     <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-xl font-bold text-gray-900 flex items-center">
-                            <TrendingUp className="h-5 w-5 mr-3 text-blue-600" />
-                            Revenue Growth
-                        </h3>
-                        <div className="flex space-x-2">
-                            <span className="flex items-center text-xs text-gray-500"><span className="h-2 w-2 rounded-full bg-blue-500 mr-1"></span> Current Year</span>
+                        <div>
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-indigo-600" /> Revenue Growth
+                            </h3>
+                            <p className="text-slate-400 text-sm font-medium mt-1">Monthly revenue trends.</p>
                         </div>
                     </div>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={revenueData}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                            <AreaChart data={revenueData}>
+                                <defs>
+                                    <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366F1" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.3} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 9, fontWeight: 700 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 9, fontWeight: 700 }} />
                                 <Tooltip
-                                    contentStyle={{ backgroundColor: '#111827', border: 'none', borderRadius: '12px' }}
-                                    itemStyle={{ color: '#fff' }}
-                                    cursor={{ fill: '#f9fafb' }}
+                                    contentStyle={{ backgroundColor: '#0F172A', border: 'none', borderRadius: '16px', padding: '12px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)' }}
+                                    itemStyle={{ color: '#fff', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}
+                                    cursor={{ stroke: '#6366F1', strokeWidth: 2 }}
                                 />
-                                <Bar dataKey="amount" fill="#3b82f6" radius={[6, 6, 0, 0]} barSize={40} />
-                            </BarChart>
+                                <Area type="monotone" dataKey="amount" stroke="#6366F1" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </Card>
 
-                {/* Distribution Chart */}
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                    <h3 className="text-xl font-bold text-gray-900 mb-8 flex items-center">
-                        <PieChartIcon className="h-5 w-5 mr-3 text-purple-600" />
-                        Plan Distribution
+                <Card className="bg-slate-900 p-8 rounded-3xl border-0 shadow-xl shadow-slate-200/50 text-white relative overflow-hidden">
+                    <div className="absolute -bottom-10 -right-10 p-10 opacity-10">
+                        <PieChartIcon className="h-32 w-32" />
+                    </div>
+
+                    <h3 className="text-xl font-black text-white tracking-tight mb-2 flex items-center gap-2 relative z-10">
+                        <div className="h-2 w-2 rounded-full bg-indigo-400" /> Plans
                     </h3>
-                    <div className="h-[250px] w-full">
+                    <p className="text-slate-400 text-xs font-medium mb-8 relative z-10">User distribution by plan.</p>
+
+                    <div className="h-[240px] w-full relative z-10">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={membershipDistribution.length > 0 ? membershipDistribution : [{ name: 'Default', value: 1 }]}
+                                    data={membershipDistribution.length > 0 ? membershipDistribution : [{ name: 'Scanning...', value: 1 }]}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={60}
                                     outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
+                                    stroke="none"
                                 >
-                                    {membershipDistribution.map((entry, index) => (
+                                    {membershipDistribution.map((_, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: '#fff', border: 'none', borderRadius: '12px', color: '#000', fontSize: '10px' }}
+                                />
                             </PieChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="mt-4 space-y-2">
+
+                    <div className="mt-6 space-y-2 relative z-10">
                         {membershipDistribution.map((item, idx) => (
-                            <div key={idx} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center">
-                                    <div className="h-2 w-2 rounded-full mr-2" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
-                                    <span className="text-gray-600">{item.name}</span>
+                            <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5 group hover:bg-white/10 transition-colors">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></div>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">{item.name}</span>
                                 </div>
-                                <span className="font-bold text-gray-900">{item.value}</span>
+                                <span className="text-xs font-black text-white">{item.value}</span>
                             </div>
                         ))}
                     </div>
-                </div>
+                </Card>
             </div>
 
-            {/* Member Activity List (Small Table) */}
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-8">
-                    <h3 className="text-xl font-bold text-gray-900">Member Performance Metrics</h3>
-                    <Button variant="outline" size="sm">View All Stats</Button>
+            <Card className="rounded-3xl border-0 shadow-xl shadow-slate-200/40 bg-white overflow-hidden">
+                <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                    <div>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                            <History className="h-5 w-5 text-indigo-600" /> Stat Matrix
+                        </h3>
+                        <p className="text-slate-400 text-xs font-medium mt-1">Detailed metrics breakdown.</p>
+                    </div>
+                    <Button variant="outline" className="rounded-xl px-4 h-10 text-[10px]" icon={Globe}>Global View</Button>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
-                        <thead className="bg-gray-50/50 text-xs font-bold text-gray-500 uppercase tracking-widest">
-                            <tr>
-                                <th className="px-6 py-4">Metric</th>
-                                <th className="px-6 py-4">Average</th>
-                                <th className="px-6 py-4">Peak</th>
-                                <th className="px-6 py-4">Trend</th>
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100/50">
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dimension</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Efficiency</th>
+                                <th className="px-8 py-6 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Progress</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 text-sm">
-                            <tr>
-                                <td className="px-6 py-4 font-medium text-gray-900">Workout Duration</td>
-                                <td className="px-6 py-4 text-gray-600">65 mins</td>
-                                <td className="px-6 py-4 text-gray-600">120 mins</td>
-                                <td className="px-6 py-4 text-center"><TrendingUp className="h-4 w-4 text-green-500 inline" /></td>
-                            </tr>
-                            <tr>
-                                <td className="px-6 py-4 font-medium text-gray-900">Visit Frequency</td>
-                                <td className="px-6 py-4 text-gray-600">3.4 days/wk</td>
-                                <td className="px-6 py-4 text-gray-600">7 days/wk</td>
-                                <td className="px-6 py-4 text-center"><TrendingUp className="h-4 w-4 text-green-500 inline" /></td>
-                            </tr>
-                            <tr>
-                                <td className="px-6 py-4 font-medium text-gray-900">Class Attendance</td>
-                                <td className="px-6 py-4 text-gray-600">82%</td>
-                                <td className="px-6 py-4 text-gray-600">100%</td>
-                                <td className="px-6 py-4 text-center text-center"><TrendingUp className="h-4 w-4 text-green-500 inline" /></td>
-                            </tr>
+                        <tbody className="divide-y divide-slate-50">
+                            {[
+                                { name: 'Member Retention', val: '94.2%', icon: Target, up: true },
+                                { name: 'Class Occupancy', val: '78.5%', icon: Shield, up: true },
+                                { name: 'Facility Usage', val: '62.1%', icon: Zap, up: false }
+                            ].map((stat, idx) => (
+                                <tr key={idx} className="group hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-600 transition-colors">
+                                                <stat.icon className="h-5 w-5" />
+                                            </div>
+                                            <span className="font-bold text-slate-900">{stat.name}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6 font-bold text-slate-600">{stat.val}</td>
+                                    <td className="px-8 py-6 text-right">
+                                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${stat.up ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-rose-50 text-rose-600 border-rose-100'}`}>
+                                            {stat.up ? 'Optimized' : 'Needs Review'}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 };
