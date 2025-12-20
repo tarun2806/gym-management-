@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Calendar,
   Clock,
-  Users,
   MapPin,
   Plus,
   Search,
@@ -14,9 +13,7 @@ import {
   Flame,
   Music,
   Smile,
-  Zap,
-  CheckCircle2,
-  Info
+  Zap
 } from 'lucide-react';
 import { Button, Card } from '../components';
 import { supabase } from '../lib/supabase';

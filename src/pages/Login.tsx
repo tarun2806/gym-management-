@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Shield, Mail, Lock, Zap, ArrowRight, ChevronRight, Globe, Fingerprint, Cpu } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, Zap, ArrowRight, Fingerprint } from 'lucide-react';
 import { Button, Card } from '../components';
 import { useAuth } from '../contexts/AuthContext';
 
