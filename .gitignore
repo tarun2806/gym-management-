@@ -11,10 +11,15 @@ node_modules
 dist
 dist-ssr
 *.local
+coverage
 
 # Environment variables
 .env
 .env.local
+server/.env
+
+# Firebase service account
+server/*.json
 
 # Editor directories and files
 .vscode/*
@@ -26,3 +31,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vite cache
+.vite/
+frontend/.vite/

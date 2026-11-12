@@ -1,0 +1,151 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function callerRole() {
+      return request.auth.token.role
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+        || 'member';
+    }
+
+    function isEmailVerified() {
+      return callerRole() == 'platform_admin'
+        || callerRole() == 'org_owner'
+        || request.auth.token.email_verified == true;
+    }
+
+    function isPlatformAdmin() {
+      return signedIn() && callerRole() == 'platform_admin';
+    }
+
+    function isOrgOwner(orgId) {
+      return signedIn() 
+        && isEmailVerified()
+        && callerRole() == 'org_owner'
+        && exists(/databases/$(database)/documents/organization_memberships/$(request.auth.uid))
+        && get(/databases/$(database)/documents/organization_memberships/$(request.auth.uid)).data.org_id == orgId
+        && get(/databases/$(database)/documents/organization_memberships/$(request.auth.uid)).data.role == 'org_owner';
+    }
+
+    function isOrgMember(orgId) {
+      return signedIn()
+        && isEmailVerified()
+        && exists(/databases/$(database)/documents/organization_memberships/$(request.auth.uid))
+        && get(/databases/$(database)/documents/organization_memberships/$(request.auth.uid)).data.org_id == orgId;
+    }
+
+    function isOrgStaff(orgId) {
+      return signedIn()
+        && isEmailVerified()
+        && isOrgMember(orgId)
+        && get(/databases/$(database)/documents/organization_memberships/$(request.auth.uid)).data.role in ['org_owner', 'org_admin', 'branch_manager', 'staff', 'trainer'];
+    }
+
+    function isOrgManager(orgId) {
+      return signedIn()
+        && isEmailVerified()
+        && isOrgMember(orgId)
+        && get(/databases/$(database)/documents/organization_memberships/$(request.auth.uid)).data.role in ['org_owner', 'org_admin', 'branch_manager'];
+    }
+
+    // Organizations collection
+    match /organizations/{orgId} {
+      allow read: if isPlatformAdmin() || isOrgMember(orgId);
+      allow create: if isPlatformAdmin();
+      allow update: if isPlatformAdmin() || isOrgOwner(orgId);
+      allow delete: if isPlatformAdmin();
+    }
+
+    // Organization memberships
+    match /organization_memberships/{membershipId} {
+      allow read: if isPlatformAdmin() 
+        || (signedIn() && request.auth.uid == request.resource.data.user_id)
+        || isOrgManager(request.resource.data.org_id);
+      allow create: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id);
+      allow update: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id);
+      allow delete: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id);
+    }
+
+    // Branches collection
+    match /branches/{branchId} {
+      allow read: if isPlatformAdmin() || isOrgMember(request.resource.data.org_id);
+      allow create: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id);
+      allow update: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id) || get(/databases/$(database)/documents/branches/$(branchId)).data.manager_id == request.auth.uid;
+      allow delete: if isPlatformAdmin() || isOrgOwner(request.resource.data.org_id);
+    }
+
+    // Users collection (legacy compatibility)
+    match /users/{userId} {
+      allow read: if (request.auth.uid == userId && isEmailVerified()) || isPlatformAdmin();
+      allow create: if (request.auth.uid == userId 
+        && request.resource.data.role == 'member'
+        && request.auth.token.email_verified == true);
+      allow update: if (request.auth.uid == userId 
+        && request.resource.data.role == resource.data.role
+        && isEmailVerified()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['username', 'email']));
+      allow delete: if isPlatformAdmin();
+    }
+
+    // Legacy collections (for backward compatibility during migration)
+    match /members/{memberId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /trainers/{trainerId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /classes/{classId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /class_bookings/{bookingId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /attendance/{recordId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /equipment/{itemId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /membership_plans/{planId} {
+      allow read: if signedIn() && isEmailVerified();
+      allow write: if signedIn() && isEmailVerified();
+    }
+
+    match /payments/{paymentId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /workout_plans/{planId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /diet_plans/{planId} {
+      allow read, write: if signedIn() && isEmailVerified();
+    }
+
+    match /settings/{key} {
+      allow read: if signedIn() && isEmailVerified();
+      allow write: if signedIn() && isEmailVerified();
+    }
+
+    match /system_logs/{logId} {
+      allow create: if signedIn() && isEmailVerified();
+      allow read, update, delete: if isPlatformAdmin() || isOrgManager(key);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
