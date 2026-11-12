@@ -10,5 +10,6 @@ import java.util.Optional;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, String> {
     Page<Payment> findByOrganizationIdOrderByCreatedAtDesc(String organizationId, Pageable pageable);
+    Page<Payment> findByOrganizationIdAndBranchIdOrderByCreatedAtDesc(String organizationId, String branchId, Pageable pageable);
     Optional<Payment> findByRazorpayPaymentId(String razorpayPaymentId);
 }

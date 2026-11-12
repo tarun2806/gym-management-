@@ -34,32 +34,45 @@ public class MemberController {
     public List<Member> list(@RequestHeader("X-Org-Id") String orgId,
                              @RequestParam(required = false) Integer page,
                              @RequestParam(required = false) Integer size) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
         if (page != null) {
-            Page<Member> p = memberRepository.findByOrganizationId(orgId,
-                    PageRequest.of(page, size != null ? size : 20, Sort.by("createdAt").descending()));
+            Page<Member> p = branch != null
+                    ? memberRepository.findByOrganizationIdAndBranchId(orgId, branch,
+                            PageRequest.of(page, size != null ? size : 20, Sort.by("createdAt").descending()))
+                    : memberRepository.findByOrganizationId(orgId,
+                            PageRequest.of(page, size != null ? size : 20, Sort.by("createdAt").descending()));
             return p.getContent();
         }
-        return memberRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId);
+        return branch != null
+                ? memberRepository.findByOrganizationIdAndBranchIdOrderByCreatedAtDesc(orgId, branch)
+                : memberRepository.findByOrganizationIdOrderByCreatedAtDesc(orgId);
     }
 
     @GetMapping("/active")
     public List<Member> active(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return memberRepository.findByOrganizationIdAndStatus(orgId, "Active");
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? memberRepository.findByOrganizationIdAndBranchIdAndStatus(orgId, branch, "Active")
+                : memberRepository.findByOrganizationIdAndStatus(orgId, "Active");
     }
 
     @GetMapping("/expiring")
     public List<Member> expiring(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return memberRepository.findByOrganizationIdAndExpiryDateBefore(orgId, LocalDate.now());
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? memberRepository.findByOrganizationIdAndBranchIdAndExpiryDateBefore(orgId, branch, LocalDate.now())
+                : memberRepository.findByOrganizationIdAndExpiryDateBefore(orgId, LocalDate.now());
     }
 
     @GetMapping("/{id}")
     public Member get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
         return memberRepository.findById(id)
-                .filter(m -> m.getOrganizationId().equals(orgId))
+                .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
@@ -71,8 +84,7 @@ public class MemberController {
         Member member = new Member();
         member.setId(UUID.randomUUID().toString());
         member.setOrganizationId(orgId);
-        member.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString()
-                : m.getBranchId());
+        member.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         member.setName(str(body, "name"));
         member.setEmail(str(body, "email"));
         member.setPhone(str(body, "phone"));
@@ -95,9 +107,10 @@ public class MemberController {
     public Member update(@RequestHeader("X-Org-Id") String orgId,
                          @PathVariable String id,
                          @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
         Member member = memberRepository.findById(id)
-                .filter(m -> m.getOrganizationId().equals(orgId))
+                .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (body.containsKey("name")) member.setName(str(body, "name"));
         if (body.containsKey("email")) member.setEmail(str(body, "email"));
@@ -114,9 +127,10 @@ public class MemberController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@RequestHeader("X-Org-Id") String orgId,
                                        @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Member member = memberRepository.findById(id)
-                .filter(m -> m.getOrganizationId().equals(orgId))
+                .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         memberRepository.delete(member);
         return ResponseEntity.noContent().build();

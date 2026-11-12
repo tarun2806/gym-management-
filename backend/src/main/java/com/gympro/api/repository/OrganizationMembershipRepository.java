@@ -14,4 +14,5 @@ public interface OrganizationMembershipRepository extends JpaRepository<Organiza
     List<OrganizationMembership> findByUserIdAndStatus(String userId, String status);
 
     List<OrganizationMembership> findByOrganizationId(String organizationId);
+    List<OrganizationMembership> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

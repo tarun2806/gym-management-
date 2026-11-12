@@ -10,4 +10,5 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, St
     List<StockMovement> findByProductIdOrderByDateDesc(String productId);
 
     List<StockMovement> findByOrganizationIdOrderByDateDesc(String organizationId);
+    List<StockMovement> findByOrganizationIdAndBranchIdOrderByDateDesc(String organizationId, String branchId);
 }

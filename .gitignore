@@ -35,3 +35,6 @@ server/*.json
 # Vite cache
 .vite/
 frontend/.vite/
+
+# Maven build output
+backend/target/

@@ -31,8 +31,11 @@ public class PayrollController {
 
     @GetMapping
     public List<PayrollEntry> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return payrollRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? payrollRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : payrollRepository.findByOrganizationId(orgId);
     }
 
     /**
@@ -42,7 +45,7 @@ public class PayrollController {
     @PostMapping
     @Transactional
     public PayrollEntry create(@RequestHeader("X-Org-Id") String orgId, @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         LocalDate start = date(body, "period_start");
         LocalDate end = date(body, "period_end");
         String employeeId = str(body, "employee_id");
@@ -56,7 +59,7 @@ public class PayrollController {
         PayrollEntry e = new PayrollEntry();
         e.setId(UUID.randomUUID().toString());
         e.setOrganizationId(orgId);
-        e.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : null);
+        e.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         e.setEmployeeId(employeeId);
         e.setEmployeeName(str(body, "employee_name"));
         e.setEmployeeType(strOr(body, "employee_type", "staff"));
@@ -81,9 +84,10 @@ public class PayrollController {
     public PayrollEntry setStatus(@RequestHeader("X-Org-Id") String orgId,
                                   @PathVariable String id,
                                   @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         PayrollEntry e = payrollRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if ("paid".equals(e.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Payroll already paid");

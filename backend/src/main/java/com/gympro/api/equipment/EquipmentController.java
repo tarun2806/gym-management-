@@ -29,8 +29,11 @@ public class EquipmentController {
 
     @GetMapping
     public List<Equipment> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return equipmentRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? equipmentRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : equipmentRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping
@@ -39,7 +42,7 @@ public class EquipmentController {
         Equipment e = new Equipment();
         e.setId(UUID.randomUUID().toString());
         e.setOrganizationId(orgId);
-        e.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        e.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         e.setName(str(body, "name"));
         e.setType(str(body, "type"));
         e.setBrand(str(body, "brand"));
@@ -65,9 +68,10 @@ public class EquipmentController {
     public Equipment update(@RequestHeader("X-Org-Id") String orgId,
                             @PathVariable String id,
                             @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
         Equipment e = equipmentRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (body.containsKey("name")) e.setName(str(body, "name"));
         if (body.containsKey("type")) e.setType(str(body, "type"));
@@ -86,9 +90,10 @@ public class EquipmentController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Equipment e = equipmentRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         equipmentRepository.delete(e);
         return ResponseEntity.noContent().build();

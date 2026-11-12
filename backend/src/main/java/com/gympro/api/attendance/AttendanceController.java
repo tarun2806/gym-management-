@@ -39,21 +39,27 @@ public class AttendanceController {
     @GetMapping
     public List<Attendance> list(@RequestHeader("X-Org-Id") String orgId,
                                  @RequestParam(required = false) String date) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
         LocalDate d = date != null ? LocalDate.parse(date) : LocalDate.now();
-        return attendanceRepository.findInRange(orgId,
+        List<Attendance> rows = attendanceRepository.findInRange(orgId,
                 d.atStartOfDay(), d.plusDays(1).atStartOfDay());
+        return branch != null ? rows.stream()
+                .filter(a -> branch.equals(a.getBranchId())).toList() : rows;
     }
 
     @GetMapping("/history")
     public List<Attendance> history(@RequestHeader("X-Org-Id") String orgId,
                                     @RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "20") int size) {
-        orgContext.requireMembership(orgId);
-        return attendanceRepository
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        List<Attendance> rows = attendanceRepository
                 .findByOrganizationIdOrderByCheckInDesc(orgId,
                         PageRequest.of(page, size, Sort.by("checkIn").descending()))
                 .getContent();
+        return branch != null ? rows.stream()
+                .filter(a -> branch.equals(a.getBranchId())).toList() : rows;
     }
 
     /** Check-in: rejects if the member already has an open session today. */
@@ -80,7 +86,7 @@ public class AttendanceController {
         Attendance a = new Attendance();
         a.setId(UUID.randomUUID().toString());
         a.setOrganizationId(orgId);
-        a.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        a.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         a.setMemberId(memberId);
         a.setCheckIn(LocalDateTime.now());
         a.setStatus("present");
@@ -94,9 +100,11 @@ public class AttendanceController {
     @PostMapping("/{id}/check-out")
     @Transactional
     public Attendance checkOut(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff", "trainer");
+        OrganizationMembership m = orgContext.requireRole(orgId,
+                "org_owner", "org_admin", "branch_manager", "staff", "trainer");
         Attendance a = attendanceRepository.findById(id)
                 .filter(r -> r.getOrganizationId().equals(orgId))
+                .filter(r -> orgContext.canSeeBranch(m, r.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (a.getCheckOut() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Already checked out");

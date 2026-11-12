@@ -38,18 +38,22 @@ public class PaymentController {
     public List<Payment> list(@RequestHeader("X-Org-Id") String orgId,
                               @RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "20") int size) {
-        orgContext.requireMembership(orgId);
-        return paymentRepository
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        List<Payment> rows = paymentRepository
                 .findByOrganizationIdOrderByCreatedAtDesc(orgId,
                         PageRequest.of(page, size, Sort.by("createdAt").descending()))
                 .getContent();
+        return branch != null ? rows.stream()
+                .filter(p -> branch.equals(p.getBranchId())).toList() : rows;
     }
 
     @GetMapping("/{id}")
     public Payment get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
         return paymentRepository.findById(id)
                 .filter(p -> p.getOrganizationId().equals(orgId))
+                .filter(p -> orgContext.canSeeBranch(m, p.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
@@ -61,7 +65,7 @@ public class PaymentController {
         Payment p = new Payment();
         p.setId(UUID.randomUUID().toString());
         p.setOrganizationId(orgId);
-        p.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        p.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         p.setMemberId(str(body, "member_id"));
         p.setAmount(amount(body));
         p.setType(strOr(body, "type", "membership"));
@@ -83,9 +87,10 @@ public class PaymentController {
     public Payment updateStatus(@RequestHeader("X-Org-Id") String orgId,
                                 @PathVariable String id,
                                 @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Payment p = paymentRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         String status = str(body, "status");
         if (status == null || !List.of("completed", "pending", "failed", "refunded").contains(status)) {

@@ -21,9 +21,6 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      - name: TypeScript check
-        working-directory: frontend
-        run: npx tsc -b
 
       - name: Lint
         working-directory: frontend

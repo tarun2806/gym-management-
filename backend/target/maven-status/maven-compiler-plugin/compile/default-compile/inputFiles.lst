@@ -4,7 +4,7 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/auth/MeController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/auth/OrgContextService.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/billing/InvoiceController.java
-/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/classes_/ClassController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/classes/ClassController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/dashboard/DashboardController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/equipment/EquipmentController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/expenses/ExpenseController.java
@@ -36,13 +36,12 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Trainer.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/User.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/WorkoutPlan.java
-/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/notifications_/NotificationController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/notifications/NotificationController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/org/OrgController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payments/PaymentController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payments/PaymentGatewayController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payroll/PayrollController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/plans/MembershipPlanController.java
-/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/plans_/PlanController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/pt/PtController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/AttendanceRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/BranchRepository.java
@@ -74,3 +73,4 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/SecurityConfig.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/settings/SettingsController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/trainers/TrainerController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/training/PlanController.java

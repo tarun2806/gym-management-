@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, String> {
     List<Product> findByOrganizationId(String organizationId);
+    List<Product> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

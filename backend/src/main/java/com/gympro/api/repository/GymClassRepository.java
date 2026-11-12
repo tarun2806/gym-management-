@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface GymClassRepository extends JpaRepository<GymClass, String> {
     List<GymClass> findByOrganizationId(String organizationId);
+    List<GymClass> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

@@ -1,0 +1,170 @@
+import { api } from "../api";
+import { cached, invalidate } from "../cache";
+const LIST_TTL_MS = 6e4;
+const scopeKey = (prefix, scope) => `${prefix}:${scope?.orgId ?? "all"}:${scope?.branchId ?? "all"}`;
+const invalidateAll = (prefix) => invalidate(`${prefix}:`);
+const asEntity = (row) => ({ id: String(row.id), ...row });
+const toScope = (scope) => scope ? { orgId: scope.orgId ?? void 0, branchId: scope.branchId ?? void 0 } : void 0;
+const memberService = {
+  list: (scope) => cached(scopeKey("members", scope), LIST_TTL_MS, async () => {
+    const rows = await api("/api/members", { scope: toScope(scope) });
+    return rows.map(asEntity);
+  }),
+  listActive: (scope) => cached(scopeKey("members:active", scope), LIST_TTL_MS, async () => {
+    const rows = await api("/api/members/active", { scope: toScope(scope) });
+    return rows.map(asEntity);
+  }),
+  count: async (scope) => {
+    const rows = await api("/api/members", { scope: toScope(scope) });
+    return rows.length;
+  },
+  create: async (scope, data) => {
+    const row = await api("/api/members", {
+      method: "POST",
+      scope: toScope(scope),
+      body: {
+        join_date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        ...data
+      }
+    });
+    invalidateAll("members");
+    return String(row.id);
+  },
+  update: async (id, data) => {
+    await api(`/api/members/${id}`, { method: "PUT", body: data });
+    invalidateAll("members");
+  },
+  remove: async (id) => {
+    await api(`/api/members/${id}`, { method: "DELETE" });
+    invalidateAll("members");
+  }
+};
+const trainerService = {
+  list: (scope) => cached(scopeKey("trainers", scope), LIST_TTL_MS, async () => {
+    const rows = await api("/api/trainers", { scope: toScope(scope) });
+    return rows.map(asEntity);
+  }),
+  create: async (scope, data) => {
+    const row = await api("/api/trainers", {
+      method: "POST",
+      scope: toScope(scope),
+      body: data
+    });
+    invalidateAll("trainers");
+    return String(row.id);
+  },
+  update: async (id, data) => {
+    await api(`/api/trainers/${id}`, { method: "PUT", body: data });
+    invalidateAll("trainers");
+  },
+  remove: async (id) => {
+    await api(`/api/trainers/${id}`, { method: "DELETE" });
+    invalidateAll("trainers");
+  }
+};
+const classService = {
+  list: (scope) => cached(scopeKey("classes", scope), LIST_TTL_MS, async () => {
+    const rows = await api("/api/classes", { scope: toScope(scope) });
+    return rows.map(asEntity);
+  }),
+  create: async (scope, data) => {
+    const row = await api("/api/classes", {
+      method: "POST",
+      scope: toScope(scope),
+      body: { enrolled: 0, ...data }
+    });
+    invalidateAll("classes");
+    return String(row.id);
+  },
+  update: async (id, data) => {
+    await api(`/api/classes/${id}`, { method: "PUT", body: data });
+    invalidateAll("classes");
+  },
+  remove: async (id) => {
+    await api(`/api/classes/${id}`, { method: "DELETE" });
+    invalidateAll("classes");
+  }
+};
+const attendanceService = {
+  /** Records checked in today, newest first. */
+  listToday: async (scope) => {
+    const rows = await api("/api/attendance", {
+      scope: toScope(scope)
+    });
+    return rows.map(asEntity);
+  },
+  /** True when the member already has an open (not checked-out) session today. */
+  hasOpenSessionToday: async (scope, memberId) => {
+    const rows = await attendanceService.listToday(scope);
+    return rows.some((r) => r.member_id === memberId && !r.check_out);
+  },
+  /** Check-in via the dedicated endpoint — server enforces the open-session rule. */
+  create: async (scope, data) => {
+    const row = await api("/api/attendance/check-in", {
+      method: "POST",
+      scope: toScope(scope),
+      body: data
+    });
+    return String(row.id);
+  },
+  checkOut: (id, scope) => api(`/api/attendance/${id}/check-out`, { method: "POST", scope: toScope(scope) })
+};
+const PAYMENT_PAGE_SIZE = 50;
+const paymentService = {
+  list: async (scope, pageSize = PAYMENT_PAGE_SIZE) => {
+    const rows = await api(
+      `/api/payments?page=0&size=${pageSize}`,
+      { scope: toScope(scope) }
+    );
+    return rows.map(asEntity);
+  },
+  /** Offset-paginated payments. Kept for signature compatibility. */
+  listPage: async (scope, _lastDoc, pageSize = PAYMENT_PAGE_SIZE) => {
+    const rows = await paymentService.list(scope, pageSize);
+    return {
+      rows,
+      lastSnapshot: null,
+      hasMore: rows.length === pageSize
+    };
+  },
+  create: async (scope, data) => {
+    const row = await api("/api/payments", {
+      method: "POST",
+      scope: toScope(scope),
+      body: data
+    });
+    return String(row.id);
+  }
+};
+const equipmentService = {
+  list: (scope) => cached(scopeKey("equipment", scope), LIST_TTL_MS, async () => {
+    const rows = await api("/api/equipment", { scope: toScope(scope) });
+    return rows.map(asEntity);
+  }),
+  create: async (scope, data) => {
+    const row = await api("/api/equipment", {
+      method: "POST",
+      scope: toScope(scope),
+      body: data
+    });
+    invalidateAll("equipment");
+    return String(row.id);
+  },
+  update: async (id, data) => {
+    await api(`/api/equipment/${id}`, { method: "PUT", body: data });
+    invalidateAll("equipment");
+  },
+  remove: async (id) => {
+    await api(`/api/equipment/${id}`, { method: "DELETE" });
+    invalidateAll("equipment");
+  }
+};
+export {
+  PAYMENT_PAGE_SIZE,
+  attendanceService,
+  classService,
+  equipmentService,
+  memberService,
+  paymentService,
+  trainerService
+};

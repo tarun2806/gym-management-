@@ -29,15 +29,19 @@ public class TrainerController {
 
     @GetMapping
     public List<Trainer> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return trainerRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? trainerRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : trainerRepository.findByOrganizationId(orgId);
     }
 
     @GetMapping("/{id}")
     public Trainer get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
         return trainerRepository.findById(id)
                 .filter(t -> t.getOrganizationId().equals(orgId))
+                .filter(t -> orgContext.canSeeBranch(m, t.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
@@ -47,7 +51,7 @@ public class TrainerController {
         Trainer t = new Trainer();
         t.setId(UUID.randomUUID().toString());
         t.setOrganizationId(orgId);
-        t.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        t.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         t.setName(str(body, "name"));
         t.setEmail(str(body, "email"));
         t.setPhone(str(body, "phone"));
@@ -69,9 +73,10 @@ public class TrainerController {
     public Trainer update(@RequestHeader("X-Org-Id") String orgId,
                           @PathVariable String id,
                           @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager");
         Trainer t = trainerRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         apply(t, body);
         return trainerRepository.save(t);
@@ -79,9 +84,10 @@ public class TrainerController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Trainer t = trainerRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         trainerRepository.delete(t);
         return ResponseEntity.noContent().build();

@@ -43,25 +43,46 @@ public class DashboardController {
 
     @GetMapping
     public Map<String, Object> summary(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
+        com.gympro.api.model.OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
         LocalDate today = LocalDate.now();
         LocalDateTime dayStart = today.atStartOfDay();
         LocalDateTime dayEnd = today.plusDays(1).atStartOfDay();
 
-        long totalMembers = memberRepository.countByOrganizationId(orgId);
-        long activeMembers = memberRepository
-                .findByOrganizationIdAndStatus(orgId, "Active").size();
-        long trainers = trainerRepository.findByOrganizationId(orgId).size();
-        long classes = classRepository.findByOrganizationId(orgId).size();
-        long attendanceToday = attendanceRepository
-                .findInRange(orgId, dayStart, dayEnd).size();
-        long equipment = equipmentRepository.findByOrganizationId(orgId).size();
+        long totalMembers;
+        long activeMembers;
+        long trainers;
+        long classes;
+        long attendanceToday;
+        long equipment;
+        if (branch != null) {
+            totalMembers = memberRepository.countByOrganizationIdAndBranchId(orgId, branch);
+            activeMembers = memberRepository
+                    .findByOrganizationIdAndBranchIdAndStatus(orgId, branch, "Active").size();
+            trainers = trainerRepository.findByOrganizationIdAndBranchId(orgId, branch).size();
+            classes = classRepository.findByOrganizationIdAndBranchId(orgId, branch).size();
+            attendanceToday = attendanceRepository
+                    .findInRange(orgId, dayStart, dayEnd).stream()
+                    .filter(a -> branch.equals(a.getBranchId())).count();
+            equipment = equipmentRepository.findByOrganizationIdAndBranchId(orgId, branch).size();
+        } else {
+            totalMembers = memberRepository.countByOrganizationId(orgId);
+            activeMembers = memberRepository
+                    .findByOrganizationIdAndStatus(orgId, "Active").size();
+            trainers = trainerRepository.findByOrganizationId(orgId).size();
+            classes = classRepository.findByOrganizationId(orgId).size();
+            attendanceToday = attendanceRepository
+                    .findInRange(orgId, dayStart, dayEnd).size();
+            equipment = equipmentRepository.findByOrganizationId(orgId).size();
+        }
 
         LocalDate monthStart = today.withDayOfMonth(1);
         var payments = paymentRepository
                 .findByOrganizationIdOrderByCreatedAtDesc(orgId,
                         org.springframework.data.domain.PageRequest.of(0, 1000))
-                .getContent();
+                .getContent().stream()
+                .filter(p -> branch == null || branch.equals(p.getBranchId()))
+                .toList();
         java.math.BigDecimal monthRevenue = payments.stream()
                 .filter(p -> p.getCreatedAt() != null
                         && !p.getCreatedAt().isBefore(monthStart.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant())

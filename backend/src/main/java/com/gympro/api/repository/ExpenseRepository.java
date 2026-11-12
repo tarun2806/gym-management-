@@ -10,5 +10,7 @@ import java.util.List;
 @Repository
 public interface ExpenseRepository extends JpaRepository<Expense, String> {
     List<Expense> findByOrganizationId(String organizationId);
+    List<Expense> findByOrganizationIdAndBranchId(String organizationId, String branchId);
     Page<Expense> findByOrganizationIdOrderByDateDesc(String organizationId, Pageable pageable);
+    Page<Expense> findByOrganizationIdAndBranchIdOrderByDateDesc(String organizationId, String branchId, Pageable pageable);
 }

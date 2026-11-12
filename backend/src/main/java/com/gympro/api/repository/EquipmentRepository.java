@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface EquipmentRepository extends JpaRepository<Equipment, String> {
     List<Equipment> findByOrganizationId(String organizationId);
+    List<Equipment> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

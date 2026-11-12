@@ -37,8 +37,11 @@ public class PtController {
 
     @GetMapping("/pt-packages")
     public List<PtPackage> listPackages(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return packageRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? packageRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : packageRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping("/pt-packages")
@@ -47,7 +50,7 @@ public class PtController {
         PtPackage p = new PtPackage();
         p.setId(UUID.randomUUID().toString());
         p.setOrganizationId(orgId);
-        p.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        p.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         p.setName(str(body, "name"));
         p.setDescription(str(body, "description"));
         p.setSessions(intVal(body, "sessions"));
@@ -83,11 +86,16 @@ public class PtController {
     @GetMapping("/pt-sessions")
     public List<PtSession> listSessions(@RequestHeader("X-Org-Id") String orgId,
                                         @RequestParam(required = false) String date) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
         if (date != null) {
-            return sessionRepository.findByOrganizationIdAndScheduledDate(orgId, LocalDate.parse(date));
+            List<PtSession> rows = sessionRepository.findByOrganizationIdAndScheduledDate(orgId, LocalDate.parse(date));
+            return branch != null ? rows.stream()
+                    .filter(s -> branch.equals(s.getBranchId())).toList() : rows;
         }
-        return sessionRepository.findByOrganizationId(orgId);
+        return branch != null
+                ? sessionRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : sessionRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping("/pt-sessions")
@@ -97,7 +105,7 @@ public class PtController {
         PtSession s = new PtSession();
         s.setId(UUID.randomUUID().toString());
         s.setOrganizationId(orgId);
-        s.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        s.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         s.setPackageId(str(body, "package_id"));
         s.setMemberId(str(body, "member_id"));
         s.setTrainerId(str(body, "trainer_id"));
@@ -117,9 +125,10 @@ public class PtController {
     public PtSession setSessionStatus(@RequestHeader("X-Org-Id") String orgId,
                                       @PathVariable String id,
                                       @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff", "trainer");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff", "trainer");
         PtSession s = sessionRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         String status = str(body, "status");
         if (!List.of("scheduled", "completed", "cancelled", "no_show").contains(status)) {

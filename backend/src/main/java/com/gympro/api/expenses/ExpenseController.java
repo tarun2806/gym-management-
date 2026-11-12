@@ -30,8 +30,11 @@ public class ExpenseController {
 
     @GetMapping
     public List<Expense> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return expenseRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? expenseRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : expenseRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping
@@ -40,7 +43,7 @@ public class ExpenseController {
         Expense e = new Expense();
         e.setId(UUID.randomUUID().toString());
         e.setOrganizationId(orgId);
-        e.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        e.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         e.setCategory(str(body, "category"));
         e.setDescription(str(body, "description"));
         e.setAmount(amount(body));
@@ -64,6 +67,7 @@ public class ExpenseController {
         OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Expense e = expenseRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         String status = str(body, "status");
         if (!List.of("approved", "rejected", "pending").contains(status)) {
@@ -79,9 +83,10 @@ public class ExpenseController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Expense e = expenseRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         expenseRepository.delete(e);
         return ResponseEntity.noContent().build();

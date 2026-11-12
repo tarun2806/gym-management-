@@ -21,9 +21,9 @@ com/gympro/api/repository/GymClassRepository.class
 com/gympro/api/repository/StockMovementRepository.class
 com/gympro/api/model/GymClass.class
 com/gympro/api/auth/OrgContextService.class
+com/gympro/api/classes/ClassController.class
 com/gympro/api/org/OrgController.class
 com/gympro/api/members/MemberController.class
-com/gympro/api/notifications_/NotificationController.class
 com/gympro/api/trainers/TrainerController.class
 com/gympro/api/repository/UserRepository.class
 com/gympro/api/repository/PaymentRepository.class
@@ -39,13 +39,12 @@ com/gympro/api/model/WorkoutPlan.class
 com/gympro/api/jobs/MembershipExpiryScheduler.class
 com/gympro/api/repository/WorkoutPlanRepository.class
 com/gympro/api/settings/SettingsController.class
-com/gympro/api/plans_/PlanController.class
 com/gympro/api/payments/PaymentGatewayController.class
 com/gympro/api/repository/OrganizationMembershipRepository.class
 com/gympro/api/repository/SettingRepository.class
 com/gympro/api/auth/MeController.class
+com/gympro/api/notifications/NotificationController.class
 com/gympro/api/model/Equipment.class
-com/gympro/api/classes_/ClassController.class
 com/gympro/api/repository/ClassBookingRepository.class
 com/gympro/api/model/ClassBooking.class
 com/gympro/api/model/Product.class
@@ -71,6 +70,7 @@ com/gympro/api/plans/MembershipPlanController.class
 com/gympro/api/model/Invoice.class
 com/gympro/api/repository/PtPackageRepository.class
 com/gympro/api/repository/MembershipPlanRepository.class
+com/gympro/api/training/PlanController.class
 com/gympro/api/model/User.class
 com/gympro/api/dashboard/DashboardController.class
 com/gympro/api/migration/MigrationImportRunner.class

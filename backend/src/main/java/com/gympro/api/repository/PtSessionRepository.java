@@ -9,5 +9,7 @@ import java.util.List;
 @Repository
 public interface PtSessionRepository extends JpaRepository<PtSession, String> {
     List<PtSession> findByOrganizationIdAndScheduledDate(String organizationId, LocalDate date);
+    List<PtSession> findByOrganizationIdAndBranchIdAndScheduledDate(String organizationId, String branchId, LocalDate date);
     List<PtSession> findByOrganizationId(String organizationId);
+    List<PtSession> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

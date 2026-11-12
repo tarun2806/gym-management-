@@ -9,6 +9,7 @@ import java.util.Optional;
 @Repository
 public interface PayrollEntryRepository extends JpaRepository<PayrollEntry, String> {
     List<PayrollEntry> findByOrganizationId(String organizationId);
+    List<PayrollEntry> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 
     Optional<PayrollEntry> findByEmployeeIdAndPeriodStartAndPeriodEnd(
             String employeeId, java.time.LocalDate periodStart, java.time.LocalDate periodEnd);

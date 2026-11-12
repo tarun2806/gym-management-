@@ -30,8 +30,11 @@ public class InvoiceController {
 
     @GetMapping
     public List<Invoice> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return invoiceRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? invoiceRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : invoiceRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping
@@ -47,7 +50,7 @@ public class InvoiceController {
         Invoice i = new Invoice();
         i.setId(UUID.randomUUID().toString());
         i.setOrganizationId(orgId);
-        i.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        i.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         i.setInvoiceNumber(number);
         i.setMemberId(str(body, "member_id"));
         i.setAmount(amount(body));
@@ -67,9 +70,10 @@ public class InvoiceController {
     public Invoice setStatus(@RequestHeader("X-Org-Id") String orgId,
                              @PathVariable String id,
                              @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
         Invoice i = invoiceRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         String status = str(body, "status");
         if (!List.of("draft", "sent", "paid", "overdue", "voided").contains(status)) {
@@ -82,9 +86,10 @@ public class InvoiceController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin");
         Invoice i = invoiceRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if ("paid".equals(i.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot delete a paid invoice");

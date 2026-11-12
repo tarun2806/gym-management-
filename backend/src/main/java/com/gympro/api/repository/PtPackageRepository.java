@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface PtPackageRepository extends JpaRepository<PtPackage, String> {
     List<PtPackage> findByOrganizationId(String organizationId);
+    List<PtPackage> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

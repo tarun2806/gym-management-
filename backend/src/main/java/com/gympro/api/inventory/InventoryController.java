@@ -35,8 +35,11 @@ public class InventoryController {
 
     @GetMapping("/products")
     public List<Product> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return productRepository.findByOrganizationId(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        return branch != null
+                ? productRepository.findByOrganizationIdAndBranchId(orgId, branch)
+                : productRepository.findByOrganizationId(orgId);
     }
 
     @PostMapping("/products")
@@ -45,7 +48,7 @@ public class InventoryController {
         Product p = new Product();
         p.setId(UUID.randomUUID().toString());
         p.setOrganizationId(orgId);
-        p.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : m.getBranchId());
+        p.setBranchId(orgContext.resolveBranchId(orgId, m, body.get("branch_id")));
         p.setName(str(body, "name"));
         p.setCategory(str(body, "category"));
         p.setSku(str(body, "sku"));
@@ -71,7 +74,7 @@ public class InventoryController {
     public StockMovement adjustStock(@RequestHeader("X-Org-Id") String orgId,
                                      @PathVariable String id,
                                      @RequestBody Map<String, Object> body) {
-        orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
+        OrganizationMembership m = orgContext.requireRole(orgId, "org_owner", "org_admin", "branch_manager", "staff");
         Product p = productRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -92,7 +95,8 @@ public class InventoryController {
         StockMovement mv = new StockMovement();
         mv.setId(UUID.randomUUID().toString());
         mv.setOrganizationId(orgId);
-        mv.setBranchId(body.get("branch_id") != null ? body.get("branch_id").toString() : p.getBranchId());
+        mv.setBranchId(orgContext.resolveBranchId(orgId, m,
+                body.get("branch_id") != null ? body.get("branch_id") : p.getBranchId()));
         mv.setProductId(p.getId());
         mv.setType(type);
         mv.setQuantity(qty);
@@ -106,14 +110,24 @@ public class InventoryController {
 
     @GetMapping("/stock-movements")
     public List<StockMovement> allMovements(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
-        return movementRepository.findByOrganizationIdOrderByDateDesc(orgId);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        String branch = orgContext.readBranchScope(m);
+        List<StockMovement> rows = movementRepository.findByOrganizationIdOrderByDateDesc(orgId);
+        return branch != null ? rows.stream()
+                .filter(x -> branch.equals(x.getBranchId())).toList() : rows;
     }
 
     @GetMapping("/products/{id}/movements")
     public List<StockMovement> movements(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        orgContext.requireMembership(orgId);
-        return movementRepository.findByProductIdOrderByDateDesc(id);
+        OrganizationMembership m = orgContext.requireMembership(orgId);
+        Product p = productRepository.findById(id)
+                .filter(x -> x.getOrganizationId().equals(orgId))
+                .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        String branch = orgContext.readBranchScope(m);
+        List<StockMovement> rows = movementRepository.findByProductIdOrderByDateDesc(p.getId());
+        return branch != null ? rows.stream()
+                .filter(x -> branch.equals(x.getBranchId())).toList() : rows;
     }
 
     private static String str(Map<String, Object> b, String k) {

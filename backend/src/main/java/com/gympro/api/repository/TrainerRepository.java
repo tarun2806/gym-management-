@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface TrainerRepository extends JpaRepository<Trainer, String> {
     List<Trainer> findByOrganizationId(String organizationId);
+    List<Trainer> findByOrganizationIdAndBranchId(String organizationId, String branchId);
 }

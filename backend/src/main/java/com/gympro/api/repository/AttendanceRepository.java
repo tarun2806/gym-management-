@@ -22,6 +22,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, String> 
                                  @Param("to") LocalDateTime to);
 
     Page<Attendance> findByOrganizationIdOrderByCheckInDesc(String organizationId, Pageable pageable);
+    Page<Attendance> findByOrganizationIdAndBranchIdOrderByCheckInDesc(String organizationId, String branchId, Pageable pageable);
 
     Optional<Attendance> findFirstByOrganizationIdAndMemberIdAndCheckOutIsNullOrderByCheckInDesc(
             String organizationId, String memberId);

@@ -1,6 +1,7 @@
 package com.gympro.api.auth;
 
 import com.gympro.api.model.OrganizationMembership;
+import com.gympro.api.repository.BranchRepository;
 import com.gympro.api.repository.OrganizationMembershipRepository;
 import com.gympro.api.security.AppUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -20,9 +21,12 @@ import java.util.List;
 public class OrgContextService {
 
     private final OrganizationMembershipRepository membershipRepository;
+    private final BranchRepository branchRepository;
 
-    public OrgContextService(OrganizationMembershipRepository membershipRepository) {
+    public OrgContextService(OrganizationMembershipRepository membershipRepository,
+                             BranchRepository branchRepository) {
         this.membershipRepository = membershipRepository;
+        this.branchRepository = branchRepository;
     }
 
     public AppUserPrincipal principal() {
@@ -50,6 +54,44 @@ public class OrgContextService {
             if (r.equals(m.getRole())) return m;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Insufficient permissions");
+    }
+
+    /**
+     * Resolves the effective branch for a write. Branch-scoped memberships are
+     * pinned to their own branch; org-wide memberships may target any branch
+     * that belongs to the organization. Client-supplied branch ids are never
+     * trusted without validation.
+     */
+    public String resolveBranchId(String orgId, OrganizationMembership m, Object requested) {
+        String req = requested != null ? requested.toString() : null;
+        if (m.getBranchId() != null) {
+            if (req != null && !req.equals(m.getBranchId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Branch access denied");
+            }
+            return m.getBranchId();
+        }
+        if (req == null) return null;
+        boolean valid = branchRepository.findByOrganizationId(orgId).stream()
+                .anyMatch(b -> b.getId().equals(req));
+        if (!valid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown branch for organization");
+        }
+        return req;
+    }
+
+    /**
+     * Returns the branch id a read must be restricted to, or null for
+     * org-wide visibility. Branch-scoped memberships only see their branch;
+     * org-wide memberships (null branchId) see the whole organization.
+     */
+    public String readBranchScope(OrganizationMembership m) {
+        return m.getBranchId();
+    }
+
+    /** True when the entity's branch is visible to this membership. */
+    public boolean canSeeBranch(OrganizationMembership m, String entityBranchId) {
+        return m.getBranchId() == null
+                || (entityBranchId != null && entityBranchId.equals(m.getBranchId()));
     }
 
     private OrganizationMembership toEntity(AppUserPrincipal.OrgMembershipView v, String orgId) {
