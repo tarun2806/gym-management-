@@ -12,8 +12,6 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Map;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -58,9 +56,11 @@ class PublicApiSecurityTest {
 
     @Test
     void validateKeyDoesNotRequireAuthenticationTomcat() {
-        ResponseEntity<String> r = rest.postForEntity("/api/owner/validate-key",
-                Map.of("key", "bad"), String.class);
-        assertEquals(HttpStatus.NOT_FOUND, r.getStatusCode());
+        var headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        var req = new org.springframework.http.HttpEntity<>("{\"key\":\"bad\"}", headers);
+        ResponseEntity<String> r = rest.postForEntity("/api/owner/validate-key", req, String.class);
+        assertEquals(HttpStatus.NOT_FOUND, r.getStatusCode(), () -> "body=" + r.getBody());
     }
 
     @Test

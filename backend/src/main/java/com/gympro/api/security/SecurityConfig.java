@@ -1,13 +1,16 @@
 package com.gympro.api.security;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -28,9 +31,32 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    @Order(1)
+    public SecurityFilterChain publicChain(HttpSecurity http) throws Exception {
         return http
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**").disable())
+                .securityMatcher(new OrRequestMatcher(
+                        new AntPathRequestMatcher("/api/health"),
+                        new AntPathRequestMatcher("/api/subscription/plans"),
+                        new AntPathRequestMatcher("/api/owner/validate-key"),
+                        new AntPathRequestMatcher("/api/payments/gateway/webhook"),
+                        new AntPathRequestMatcher("/api/webhooks/**"),
+                        new AntPathRequestMatcher("/**", "OPTIONS")))
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsSource()))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .httpBasic(b -> b.disable())
+                .formLogin(f -> f.disable())
+                .logout(l -> l.disable())
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    @Order(2)
+    public SecurityFilterChain apiChain(HttpSecurity http) throws Exception {
+        return http
+                .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(corsSource()))
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .httpBasic(b -> b.disable())
@@ -45,23 +71,28 @@ public class SecurityConfig {
                         .accessDeniedHandler((req, res, ex) -> {
                             res.setStatus(403);
                             res.setContentType("application/json");
-                            res.getWriter().write("{\"message\":\"forbidden\",\"cause\":\"" +
-                                    ex.getClass().getSimpleName() + "\"}");
+                            res.getWriter().write("{\"message\":\"forbidden\"}");
                         }))
                 .authorizeHttpRequests(auth -> auth
-                        // Ant matchers (not MVC) so POST public endpoints match even
-                        // before DispatcherServlet handler lookup.
-                        .requestMatchers(
-                                AntPathRequestMatcher.antMatcher("/api/health"),
-                                AntPathRequestMatcher.antMatcher("/api/webhooks/**"),
-                                AntPathRequestMatcher.antMatcher("/api/subscription/plans"),
-                                AntPathRequestMatcher.antMatcher("/api/owner/validate-key"),
-                                AntPathRequestMatcher.antMatcher("/api/payments/gateway/webhook")
-                        ).permitAll()
+                        .requestMatchers(new AntPathRequestMatcher("/error")).permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<FirebaseTokenFilter> disableFirebaseServletRegistration(FirebaseTokenFilter filter) {
+        FilterRegistrationBean<FirebaseTokenFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<RateLimitFilter> disableRateLimitServletRegistration(RateLimitFilter filter) {
+        FilterRegistrationBean<RateLimitFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:4173,http://127.0.0.1:4173}")

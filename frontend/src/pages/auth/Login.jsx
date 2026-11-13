@@ -189,10 +189,18 @@ const Login = () => {
             <div className="p-6 sm:p-8">
               <header className="mb-6">
                 <h2 className="font-display text-[22px] font-bold tracking-tight text-white">
-                  {mode === "login" ? "Sign in to your workspace" : mode === "signup" ? "Create your account" : "Reset your password"}
+                  {mode === "login" ? "Sign in to your workspace"
+                    : mode === "signup" ? "Create your account"
+                    : mode === "owner" ? "Create your gym"
+                    : mode === "member" ? "Join your gym"
+                    : "Reset your password"}
                 </h2>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-slate-400">
-                  {mode === "login" ? "Use the address your gym administrator assigned to you." : mode === "signup" ? "New accounts start with member-level access; roles are set by an admin." : "We will email you a secure link to set a new password."}
+                  {mode === "login" ? "Use the address your gym administrator assigned to you."
+                    : mode === "signup" ? "New accounts start with member-level access; roles are set by an admin."
+                    : mode === "owner" ? "Validate an activation key issued by GymPro, then register your first branch."
+                    : mode === "member" ? "Use the invitation token from your gym to create or link your member account."
+                    : "We will email you a secure link to set a new password."}
                 </p>
               </header>
 
