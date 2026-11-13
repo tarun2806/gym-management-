@@ -59,8 +59,10 @@ const AuthProvider = ({ children }) => {
     let status;
     let emailVerified = fbUser.emailVerified;
     let memberships = [];
+    let platformAdmin = false;
     try {
       const profile = await api("/api/me/profile");
+      platformAdmin = profile.platform_admin === true;
       if (profile.role && profile.role in ROLE_CAPABILITIES) {
         role = profile.role;
       }
@@ -85,6 +87,7 @@ const AuthProvider = ({ children }) => {
       username,
       email: fbUser.email || void 0,
       role,
+      platformAdmin,
       permissions: ROLE_CAPABILITIES[role],
       memberships
     };

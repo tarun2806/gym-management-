@@ -4,12 +4,28 @@
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
-    "firestore": { "port": 8080 },
-    "ui": { "enabled": true, "port": 4000 }
+    "firestore": {
+      "port": 8080
+    },
+    "ui": {
+      "enabled": true,
+      "port": 4000
+    },
+    "auth": {
+      "port": 9099
+    }
   },
   "hosting": {
     "public": "frontend/dist",
-    "ignore": ["firebase.json", "**/.*"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+    "ignore": [
+      "firebase.json",
+      "**/.*"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }

@@ -40,9 +40,14 @@ public class FirebaseAuthProvider {
     @PostConstruct
     void init() {
         try {
+            boolean emulator = System.getenv("FIREBASE_AUTH_EMULATOR_HOST") != null
+                    && !System.getenv("FIREBASE_AUTH_EMULATOR_HOST").isBlank();
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseOptions.Builder builder = FirebaseOptions.builder();
-                if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
+                if (emulator) {
+                    // Auth emulator accepts unsigned tokens; no credentials needed.
+                    builder.setCredentials(com.google.auth.oauth2.GoogleCredentials.newBuilder().build());
+                } else if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
                     builder.setCredentials(
                             GoogleCredentials.fromStream(new FileInputStream(serviceAccountPath)));
                 } else {

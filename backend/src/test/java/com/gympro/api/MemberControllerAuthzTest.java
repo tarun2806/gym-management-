@@ -35,8 +35,7 @@ class MemberControllerAuthzTest {
     void setUp() {
         memberRepo = mock(MemberRepository.class);
         controller = new MemberController(memberRepo,
-                new OrgContextService(mock(OrganizationMembershipRepository.class),
-                        mock(BranchRepository.class)));
+                new OrgContextService(mock(OrganizationMembershipRepository.class), mock(BranchRepository.class), mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class)));
     }
 
     @AfterEach

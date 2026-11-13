@@ -1,6 +1,7 @@
 package com.gympro.api.owner;
 
 import com.gympro.api.auth.OrgContextService;
+import com.gympro.api.subscription.SubscriptionService;
 import com.gympro.api.model.*;
 import com.gympro.api.platform.PlatformAdminController;
 import com.gympro.api.repository.*;
@@ -28,6 +29,7 @@ public class OwnerRegistrationController {
     private final OrganizationRepository organizationRepository;
     private final OrganizationMembershipRepository membershipRepository;
     private final BranchRepository branchRepository;
+    private final SubscriptionService subscriptionService;
     private final SystemLogRepository logRepository;
     private final OrgContextService orgContext;
     private final ObjectMapper objectMapper;
@@ -36,6 +38,7 @@ public class OwnerRegistrationController {
                                       OrganizationRepository organizationRepository,
                                       OrganizationMembershipRepository membershipRepository,
                                       BranchRepository branchRepository,
+                                SubscriptionService subscriptionService,
                                       SystemLogRepository logRepository,
                                       OrgContextService orgContext,
                                       ObjectMapper objectMapper) {
@@ -43,6 +46,7 @@ public class OwnerRegistrationController {
         this.organizationRepository = organizationRepository;
         this.membershipRepository = membershipRepository;
         this.branchRepository = branchRepository;
+        this.subscriptionService = subscriptionService;
         this.logRepository = logRepository;
         this.orgContext = orgContext;
         this.objectMapper = objectMapper;
@@ -132,6 +136,9 @@ public class OwnerRegistrationController {
         b.setCreatedAt(Instant.now());
         branchRepository.save(b);
 
+        // 14-day trial begins on successful registration — inside the same
+        // transaction so a failure rolls back org+membership+branch+key+trial.
+        subscriptionService.createTrial(orgId, p.uid());
         audit(orgId, "owner.registration_completed", orgId,
                 "org=" + orgName + " branch=" + branchName + " key=" + k.getId());
         return Map.of("organization_id", orgId, "branch_id", b.getId(), "role", "org_owner");

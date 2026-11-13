@@ -50,7 +50,7 @@ class MemberInvitationTest {
         memberShipRepo = mock(OrganizationMembershipRepository.class);
         logRepo = mock(SystemLogRepository.class);
         controller = new MemberInvitationController(inviteRepo, memberRepo, memberShipRepo,
-                logRepo, mock(TrainerRepository.class), new OrgContextService(memberShipRepo, mock(BranchRepository.class)));
+                logRepo, mock(TrainerRepository.class), new OrgContextService(memberShipRepo, mock(BranchRepository.class), mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class)));
     }
 
     @AfterEach

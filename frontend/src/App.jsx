@@ -5,6 +5,19 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import { ToastProvider } from "./components/ui/Toast";
 import { ErrorBoundary } from "./components/layout/ErrorBoundary";
 import Login from "./pages/auth/Login";
+const MarketingHome = lazy(() => import("./pages/marketing/Home"));
+const MarketingFeatures = lazy(() => import("./pages/marketing/Features"));
+const MarketingHowItWorks = lazy(() => import("./pages/marketing/HowItWorks"));
+const MarketingSolutions = lazy(() => import("./pages/marketing/Solutions"));
+const MarketingPricing = lazy(() => import("./pages/marketing/Pricing"));
+const MarketingAbout = lazy(() => import("./pages/marketing/About"));
+const MarketingContact = lazy(() => import("./pages/marketing/Contact"));
+const PlatformLayout = lazy(() => import("./pages/platform/PlatformLayout"));
+const PlatformDashboard = lazy(() => import("./pages/platform/PlatformDashboard"));
+const PlatformOrganizations = lazy(() => import("./pages/platform/Organizations"));
+const PlatformPlans = lazy(() => import("./pages/platform/Plans"));
+const PlatformActivationKeys = lazy(() => import("./pages/platform/ActivationKeys"));
+const Subscription = lazy(() => import("./pages/subscription/Subscription"));
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { OrganizationProvider, useOrganization } from "./contexts/OrganizationContext";
 import { MANAGEMENT_ROLES, resolveOrgRole } from "./lib/permissions";
@@ -44,6 +57,11 @@ const RoleHome = () => {
   const role = resolveOrgRole(memberships, currentOrganization?.id, user?.role);
   return role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />;
 };
+const HomeOrApp = () => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <PageFallback />;
+  return user ? <RoleHome /> : <MarketingHome />;
+};
 function App() {
   return <AuthProvider>
       <OrganizationProvider>
@@ -54,10 +72,27 @@ function App() {
                 <Routes>
                   <Route path="/login" element={<Login />} />
 
+                  {/* Public marketing site — unauthenticated visitors.
+                      "/" is resolved by HomeOrApp below (marketing when logged out). */}
+                  <Route path="/features" element={<MarketingFeatures />} />
+                  <Route path="/how-it-works" element={<MarketingHowItWorks />} />
+                  <Route path="/solutions" element={<MarketingSolutions />} />
+                  <Route path="/pricing" element={<MarketingPricing />} />
+                  <Route path="/about" element={<MarketingAbout />} />
+                  <Route path="/contact" element={<MarketingContact />} />
+                  <Route path="/" element={<HomeOrApp />} />
+
+                  {/* Vendor platform admin — guarded by user.platformAdmin inside layout. */}
+                  <Route path="/platform" element={<PlatformLayout />}>
+                    <Route index element={<PlatformDashboard />} />
+                    <Route path="organizations" element={<PlatformOrganizations />} />
+                    <Route path="plans" element={<PlatformPlans />} />
+                    <Route path="activation-keys" element={<PlatformActivationKeys />} />
+                  </Route>
+
                   <Route element={<ProtectedRoute>
                       <Layout />
                     </ProtectedRoute>}>
-                    <Route path="/" element={<RoleHome />} />
                     <Route
     path="/members"
     element={<ProtectedRoute requiredCapability="members.view">
@@ -186,6 +221,7 @@ function App() {
     /* Personal settings: reachable by every signed-in role. */
   }
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/subscription" element={<Subscription />} />
                   </Route>
 
                   {

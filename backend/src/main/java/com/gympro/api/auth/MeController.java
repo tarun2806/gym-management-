@@ -174,6 +174,7 @@ public class MeController {
         out.put("status", u != null ? u.getStatus() : "active");
         out.put("email_verified", u != null ? u.isEmailVerified() : false);
         out.put("role", role);
+        out.put("platform_admin", u != null && u.isPlatformAdmin());
         // Per-organization roles — the client must resolve permissions from
         // the membership of the currently selected org, not the global max.
         out.put("memberships", memberships.stream()

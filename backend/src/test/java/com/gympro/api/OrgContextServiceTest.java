@@ -32,7 +32,7 @@ class OrgContextServiceTest {
     @BeforeEach
     void setUp() {
         branchRepo = mock(BranchRepository.class);
-        svc = new OrgContextService(mock(OrganizationMembershipRepository.class), branchRepo);
+        svc = new OrgContextService(mock(OrganizationMembershipRepository.class), branchRepo, mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class));
     }
 
     @AfterEach

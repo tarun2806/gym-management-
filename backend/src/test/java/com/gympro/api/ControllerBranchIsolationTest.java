@@ -72,8 +72,7 @@ class ControllerBranchIsolationTest {
         equipmentRepo = mock(EquipmentRepository.class);
         packageRepo = mock(PtPackageRepository.class);
         sessionRepo = mock(PtSessionRepository.class);
-        orgContext = new OrgContextService(mock(OrganizationMembershipRepository.class),
-                mock(BranchRepository.class));
+        orgContext = new OrgContextService(mock(OrganizationMembershipRepository.class), mock(BranchRepository.class), mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class));
     }
 
     @AfterEach

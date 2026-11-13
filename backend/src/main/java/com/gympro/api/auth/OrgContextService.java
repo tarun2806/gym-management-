@@ -2,6 +2,9 @@ package com.gympro.api.auth;
 
 import com.gympro.api.model.OrganizationMembership;
 import com.gympro.api.repository.BranchRepository;
+import com.gympro.api.repository.OrganizationRepository;
+import com.gympro.api.repository.OrganizationSubscriptionRepository;
+import com.gympro.api.subscription.SubscriptionService;
 import com.gympro.api.repository.OrganizationMembershipRepository;
 import com.gympro.api.security.AppUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -22,11 +25,20 @@ public class OrgContextService {
 
     private final OrganizationMembershipRepository membershipRepository;
     private final BranchRepository branchRepository;
+    private final OrganizationRepository organizationRepository;
+    private final OrganizationSubscriptionRepository subscriptionRepository;
+    private final SubscriptionService subscriptionService;
 
     public OrgContextService(OrganizationMembershipRepository membershipRepository,
-                             BranchRepository branchRepository) {
+                             BranchRepository branchRepository,
+                             OrganizationRepository organizationRepository,
+                             OrganizationSubscriptionRepository subscriptionRepository,
+                             SubscriptionService subscriptionService) {
         this.membershipRepository = membershipRepository;
         this.branchRepository = branchRepository;
+        this.organizationRepository = organizationRepository;
+        this.subscriptionRepository = subscriptionRepository;
+        this.subscriptionService = subscriptionService;
     }
 
     public AppUserPrincipal principal() {
@@ -112,9 +124,36 @@ public class OrgContextService {
     public OrganizationMembership requireRole(String orgId, String... roles) {
         OrganizationMembership m = requireMembership(orgId);
         for (String r : roles) {
-            if (r.equals(m.getRole())) return m;
+            if (r.equals(m.getRole())) {
+                checkOrgStanding(orgId);
+                return m;
+            }
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Insufficient permissions");
+    }
+
+    /**
+     * Subscription/suspension gate for paid gym-management operations.
+     * Runs only for back-office roles (members never reach requireRole).
+     * Orgs with no subscription row are grandfathered as entitled.
+     * Billing/renewal endpoints do not use requireRole, so owners retain
+     * access to restore an expired subscription.
+     */
+    private void checkOrgStanding(String orgId) {
+        organizationRepository.findById(orgId).ifPresent(o -> {
+            if ("suspended".equals(o.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "organization_suspended");
+            }
+        });
+        subscriptionRepository.findByOrganizationId(orgId).ifPresent(s -> {
+            String eff = subscriptionService.effectiveStatus(s, java.time.Instant.now());
+            if ("SUSPENDED".equals(eff)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "organization_suspended");
+            }
+            if (!subscriptionService.hasEntitlement(orgId)) {
+                throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED, "subscription_expired");
+            }
+        });
     }
 
     /**

@@ -171,6 +171,27 @@ const memberInviteService = {
     scope: toScope(scope)
   })
 };
+const subscriptionService = {
+  mine: () => api("/api/me/subscription"),
+  plans: () => api("/api/subscription/plans"),
+  checkout: (planId) => api("/api/subscription/checkout", { method: "POST", body: { plan_id: planId } }),
+  verify: (payload) => api("/api/subscription/verify", { method: "POST", body: payload })
+};
+
+const platformService = {
+  metrics: () => api("/api/platform/metrics"),
+  organizations: () => api("/api/platform/organizations"),
+  organization: (id) => api(`/api/platform/organizations/${id}`),
+  suspendOrg: (id, reason) => api(`/api/platform/organizations/${id}/suspend`, { method: "POST", body: { reason } }),
+  reactivateOrg: (id) => api(`/api/platform/organizations/${id}/reactivate`, { method: "POST" }),
+  plans: () => api("/api/platform/subscription-plans"),
+  createPlan: (data) => api("/api/platform/subscription-plans", { method: "POST", body: data }),
+  updatePlan: (id, data) => api(`/api/platform/subscription-plans/${id}`, { method: "PUT", body: data }),
+  activationKeys: () => api("/api/platform/activation-keys"),
+  createActivationKey: (label) => api("/api/platform/activation-keys", { method: "POST", body: { label } }),
+  revokeActivationKey: (id) => api(`/api/platform/activation-keys/${id}/revoke`, { method: "POST" })
+};
+
 const memberPortalService = {
   member: () => api("/api/me/member"),
   attendance: (page = 0, from, to) => {
@@ -197,5 +218,7 @@ export {
   memberPortalService,
   memberService,
   paymentService,
+  platformService,
+  subscriptionService,
   trainerService
 };

@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 const env = import.meta.env;
 const requiredKeys = [
@@ -26,6 +26,9 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+if (env.VITE_USE_AUTH_EMULATOR === "true") {
+  connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
+}
 const db = getFirestore(app);
 export {
   auth,

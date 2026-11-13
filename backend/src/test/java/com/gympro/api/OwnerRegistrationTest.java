@@ -45,7 +45,7 @@ class OwnerRegistrationTest {
         branchRepo = mock(BranchRepository.class);
         logRepo = mock(SystemLogRepository.class);
         controller = new OwnerRegistrationController(keyRepo, orgRepo, memberRepo,
-                branchRepo, logRepo, new OrgContextService(memberRepo, branchRepo),
+                branchRepo, mock(com.gympro.api.subscription.SubscriptionService.class), logRepo, new OrgContextService(memberRepo, branchRepo, mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class)),
                 new ObjectMapper());
         var p = new AppUserPrincipal("uid-1", "o@x.com", List.of());
         SecurityContextHolder.getContext().setAuthentication(

@@ -129,6 +129,14 @@ const Sidebar = ({ onClose }) => {
     /* Settings is personal and always available to signed-in users */
   }
                 <div className="space-y-1">
+                    {orgRole === "org_owner" && <NavLink
+    to="/subscription"
+    onClick={onClose}
+    className={`flex items-center px-4 py-3 rounded-[18px] text-[11px] font-bold uppercase tracking-[0.05em] transition-all duration-300 group relative overflow-hidden ${location.pathname === "/subscription" ? "bg-white/10 text-white shadow-xl shadow-black/50 border border-white/5" : "text-slate-500 hover:bg-white/5 hover:text-slate-200 border border-transparent"}`}
+  >
+                        <CreditCard className={`h-3.5 w-3.5 mr-3 transition-all duration-500 ${location.pathname === "/subscription" ? "scale-110 text-slate-400" : "text-slate-600 group-hover:text-slate-300"}`} />
+                        <span className="relative z-10">Subscription</span>
+                    </NavLink>}
                     <NavLink
     to="/settings"
     onClick={onClose}
