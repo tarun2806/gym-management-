@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface WorkoutPlanRepository extends JpaRepository<WorkoutPlan, String> {
     List<WorkoutPlan> findByOrganizationId(String organizationId);
+    List<WorkoutPlan> findByMemberId(String memberId);
 }

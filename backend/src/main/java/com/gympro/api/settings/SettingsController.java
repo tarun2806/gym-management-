@@ -25,7 +25,7 @@ public class SettingsController {
 
     @GetMapping("/{key}")
     public Map<String, Object> get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String key) {
-        orgContext.requireMembership(orgId);
+        orgContext.requireSettings(orgId);
         return settingRepository.findById(scopedKey(orgId, key))
                 .map(s -> {
                     try {

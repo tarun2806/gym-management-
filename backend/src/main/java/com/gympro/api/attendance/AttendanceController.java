@@ -39,7 +39,7 @@ public class AttendanceController {
     @GetMapping
     public List<Attendance> list(@RequestHeader("X-Org-Id") String orgId,
                                  @RequestParam(required = false) String date) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         LocalDate d = date != null ? LocalDate.parse(date) : LocalDate.now();
         List<Attendance> rows = attendanceRepository.findInRange(orgId,
@@ -52,7 +52,7 @@ public class AttendanceController {
     public List<Attendance> history(@RequestHeader("X-Org-Id") String orgId,
                                     @RequestParam(defaultValue = "0") int page,
                                     @RequestParam(defaultValue = "20") int size) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         List<Attendance> rows = attendanceRepository
                 .findByOrganizationIdOrderByCheckInDesc(orgId,

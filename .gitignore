@@ -38,3 +38,10 @@ frontend/.vite/
 
 # Maven build output
 backend/target/
+
+# Firebase service account (secret)
+backend/firebase-service-account.json
+*.service-account.json
+
+# Playwright artifacts
+frontend/test-results/

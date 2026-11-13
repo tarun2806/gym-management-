@@ -29,7 +29,7 @@ public class MembershipPlanController {
 
     @GetMapping
     public List<MembershipPlan> list(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
+        orgContext.requirePlanAdmin(orgId);
         return planRepository.findByOrganizationId(orgId);
     }
 

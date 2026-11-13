@@ -47,20 +47,50 @@ public class AdminController {
         return membershipRepository.findByOrganizationId(orgId);
     }
 
+    /** Org-assignable roles only — platform_admin can never be granted here. */
+    private static final List<String> ASSIGNABLE_ROLES = List.of(
+            "org_owner", "org_admin", "branch_manager", "staff", "trainer", "member");
+
     /** Change a member's org role — owner only for elevated roles. */
     @PatchMapping("/memberships/{membershipId}/role")
     public OrganizationMembership setRole(@RequestHeader("X-Org-Id") String orgId,
                                           @PathVariable String membershipId,
                                           @RequestBody Map<String, Object> body) {
         String newRole = String.valueOf(body.getOrDefault("role", ""));
+        if (!ASSIGNABLE_ROLES.contains(newRole)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "role must be one of " + ASSIGNABLE_ROLES);
+        }
+        OrganizationMembership caller = orgContext.requireMembership(orgId);
         boolean elevated = List.of("org_owner", "org_admin").contains(newRole);
         orgContext.requireRole(orgId, elevated ? new String[]{"org_owner"} : new String[]{"org_owner", "org_admin"});
+        if ("org_owner".equals(newRole) && !"org_owner".equals(caller.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the owner can grant org_owner");
+        }
 
         OrganizationMembership m = membershipRepository.findById(membershipId)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        String oldRole = m.getRole();
         m.setRole(newRole);
-        return membershipRepository.save(m);
+        OrganizationMembership saved = membershipRepository.save(m);
+        audit(orgId, "membership.role_changed", membershipId,
+                "role " + oldRole + " -> " + newRole);
+        return saved;
+    }
+
+    private void audit(String orgId, String action, String targetId, String detail) {
+        SystemLog log = new SystemLog();
+        log.setId(UUID.randomUUID().toString());
+        log.setOrgId(orgId);
+        log.setLevel("info");
+        log.setAction(action);
+        log.setMessage(detail);
+        log.setTargetType("membership");
+        log.setTargetId(targetId);
+        log.setUserId(orgContext.principal().uid());
+        log.setCreatedAt(Instant.now());
+        systemLogRepository.save(log);
     }
 
     /** Suspend/reactivate a membership — owner/admin. */
@@ -123,6 +153,10 @@ public class AdminController {
         OrganizationMembership caller = orgContext.requireRole(orgId, "org_owner", "org_admin");
         String userId = str(body, "user_id");
         String role = strOr(body, "role", "staff");
+        if (!ASSIGNABLE_ROLES.contains(role)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "role must be one of " + ASSIGNABLE_ROLES);
+        }
         if (userId == null || userId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "user_id is required");
         }
@@ -205,11 +239,11 @@ public class AdminController {
         return systemLogRepository.findTop50ByOrderByCreatedAtDesc();
     }
 
-    /** Append an audit entry — any org member may log their own actions. */
+    /** Append an audit entry — back-office members may log their own actions. */
     @PostMapping("/logs")
     public SystemLog addLog(@RequestHeader("X-Org-Id") String orgId,
                             @RequestBody Map<String, Object> body) {
-        orgContext.requireMembership(orgId);
+        orgContext.requireOps(orgId);
         SystemLog l = new SystemLog();
         l.setId(UUID.randomUUID().toString());
         l.setLevel(strOr(body, "level", "info"));

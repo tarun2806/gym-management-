@@ -47,6 +47,67 @@ public class OrgContextService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Not a member of this organization"));
     }
 
+    /** Roles allowed to read organization-wide management data. */
+    public static final String[] BACKOFFICE_ROLES = {
+            "platform_admin", "org_owner", "org_admin", "branch_manager", "staff", "trainer"
+    };
+
+    /**
+     * Require an active membership with a back-office role — i.e. everyone
+     * except {@code member}. Used for organization-wide read endpoints
+     * (member lists, payments, invoices, payroll, expenses, equipment, …)
+     * that a member must never see. Member self-service data is served by
+     * the /api/me/* endpoints instead.
+     */
+    /** Front-desk operations: members, trainers, attendance, classes, equipment/inventory. */
+    public static final String[] OPS_ROLES = {
+            "platform_admin", "org_owner", "org_admin", "branch_manager", "staff"
+    };
+
+    /** Organization finances: payments, invoices, expenses, payroll, revenue. */
+    public static final String[] FINANCE_ROLES = {
+            "platform_admin", "org_owner", "org_admin"
+    };
+
+    /** Workout/diet plan management (mirrors frontend workouts|diet capabilities). */
+    public static final String[] PLAN_ROLES = {
+            "platform_admin", "org_owner", "org_admin", "branch_manager", "trainer"
+    };
+
+    /** Gym configuration (mirrors frontend settings.gym capability). */
+    public static final String[] SETTINGS_ROLES = {
+            "platform_admin", "org_owner", "org_admin", "branch_manager"
+    };
+
+    /** Membership plan catalog management (mirrors frontend plans capability). */
+    public static final String[] PLAN_ADMIN_ROLES = {
+            "platform_admin", "org_owner", "org_admin", "branch_manager"
+    };
+
+    public OrganizationMembership requireBackoffice(String orgId) {
+        return requireRole(orgId, BACKOFFICE_ROLES);
+    }
+
+    public OrganizationMembership requireOps(String orgId) {
+        return requireRole(orgId, OPS_ROLES);
+    }
+
+    public OrganizationMembership requireFinance(String orgId) {
+        return requireRole(orgId, FINANCE_ROLES);
+    }
+
+    public OrganizationMembership requirePlanRoles(String orgId) {
+        return requireRole(orgId, PLAN_ROLES);
+    }
+
+    public OrganizationMembership requireSettings(String orgId) {
+        return requireRole(orgId, SETTINGS_ROLES);
+    }
+
+    public OrganizationMembership requirePlanAdmin(String orgId) {
+        return requireRole(orgId, PLAN_ADMIN_ROLES);
+    }
+
     /** Require membership with one of the allowed roles. */
     public OrganizationMembership requireRole(String orgId, String... roles) {
         OrganizationMembership m = requireMembership(orgId);

@@ -6,6 +6,7 @@ import com.gympro.api.model.GymClass;
 import com.gympro.api.model.OrganizationMembership;
 import com.gympro.api.repository.ClassBookingRepository;
 import com.gympro.api.repository.GymClassRepository;
+import com.gympro.api.repository.MemberRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -23,13 +24,16 @@ public class ClassController {
 
     private final GymClassRepository classRepository;
     private final ClassBookingRepository bookingRepository;
+    private final MemberRepository memberRepository;
     private final OrgContextService orgContext;
 
     public ClassController(GymClassRepository classRepository,
                            ClassBookingRepository bookingRepository,
+                           MemberRepository memberRepository,
                            OrgContextService orgContext) {
         this.classRepository = classRepository;
         this.bookingRepository = bookingRepository;
+        this.memberRepository = memberRepository;
         this.orgContext = orgContext;
     }
 
@@ -99,10 +103,11 @@ public class ClassController {
 
     // ─── Bookings ────────────────────────────────────────────────────────────
 
+    /** Roster view — back-office only; members use /api/me/class-bookings. */
     @GetMapping("/{classId}/bookings")
     public List<ClassBooking> bookings(@RequestHeader("X-Org-Id") String orgId,
                                        @PathVariable String classId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         GymClass c = classRepository.findById(classId)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
@@ -115,13 +120,15 @@ public class ClassController {
      * enrolled counter updated atomically — prevents overselling under
      * concurrent bookings.
      */
+    /** Staff books a member into a class; member_id must be a real org member. */
     @PostMapping("/{classId}/book")
     @Transactional
     public ClassBooking book(@RequestHeader("X-Org-Id") String orgId,
                              @PathVariable String classId,
                              @RequestBody Map<String, Object> body) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
-        GymClass c = classRepository.findById(classId)
+        OrganizationMembership m = orgContext.requireOps(orgId);
+        // Pessimistic lock serializes concurrent bookings for this class.
+        GymClass c = classRepository.findByIdForUpdate(classId)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -132,10 +139,14 @@ public class ClassController {
         if (memberId == null || memberId.equals("null")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "member_id required");
         }
+        memberRepository.findById(memberId)
+                .filter(x -> x.getOrganizationId().equals(orgId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "unknown member"));
         if (bookingRepository.existsByClassIdAndMemberIdAndStatus(c.getId(), memberId, "booked")) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Member already booked");
         }
-        if (c.getEnrolled() >= c.getCapacity()) {
+        // Atomic seat claim — prevents overselling under concurrent bookings.
+        if (classRepository.claimSeat(c.getId()) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Class is full");
         }
 
@@ -147,19 +158,20 @@ public class ClassController {
         b.setBookedAt(Instant.now());
         b.setBookedDate(LocalDate.now());
         b.setStatus("booked");
-
-        c.setEnrolled(c.getEnrolled() + 1);
-        classRepository.save(c);
         return bookingRepository.save(b);
     }
 
+    /** Staff cancellation of any booking; members use /api/me/class-bookings. */
     @PostMapping("/bookings/{bookingId}/cancel")
     @Transactional
     public ClassBooking cancel(@RequestHeader("X-Org-Id") String orgId,
                                @PathVariable String bookingId) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         ClassBooking b = bookingRepository.findById(bookingId)
                 .filter(x -> x.getOrganizationId().equals(orgId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        classRepository.findById(b.getClassId())
+                .filter(c -> orgContext.canSeeBranch(m, c.getBranchId()))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!"booked".equals(b.getStatus())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Booking already cancelled");

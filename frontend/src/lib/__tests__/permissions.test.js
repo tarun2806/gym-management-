@@ -1,8 +1,11 @@
 import { describe, it, expect } from "vitest";
 import {
+  MANAGEMENT_ROLES,
   ROLE_CAPABILITIES,
   roleHas,
-  assignableRoles
+  assignableRoles,
+  normalizeRole,
+  resolveOrgRole
 } from "../permissions";
 const ALL_ROLES = ["org_owner", "org_admin", "branch_manager", "staff", "trainer", "member"];
 describe("ROLE_CAPABILITIES", () => {
@@ -133,5 +136,63 @@ describe("assignableRoles", () => {
   });
   it("undefined role cannot assign any role", () => {
     expect(assignableRoles(void 0)).toEqual([]);
+  });
+});
+describe("normalizeRole", () => {
+  it("passes canonical roles through", () => {
+    for (const role of ["platform_admin", "org_owner", "org_admin", "branch_manager", "staff", "trainer", "member"]) {
+      expect(normalizeRole(role)).toBe(role);
+    }
+  });
+  it("maps legacy role strings to canonical roles", () => {
+    expect(normalizeRole("user")).toBe("member");
+    expect(normalizeRole("owner")).toBe("org_owner");
+    expect(normalizeRole("admin")).toBe("org_admin");
+    expect(normalizeRole("manager")).toBe("branch_manager");
+  });
+  it("returns null for empty input and member for unknown roles (fail closed)", () => {
+    expect(normalizeRole(null)).toBeNull();
+    expect(normalizeRole("")).toBeNull();
+    expect(normalizeRole("superuser")).toBe("member");
+  });
+});
+describe("resolveOrgRole", () => {
+  const memberships = [
+    { org_id: "org-a", role: "org_owner" },
+    { org_id: "org-b", role: "member" },
+    { org_id: "org-c", role: "user" }
+  ];
+  it("returns the selected org's role, not the global maximum", () => {
+    expect(resolveOrgRole(memberships, "org-b", "org_owner")).toBe("member");
+    expect(resolveOrgRole(memberships, "org-a", "member")).toBe("org_owner");
+  });
+  it("normalizes legacy roles from membership rows", () => {
+    expect(resolveOrgRole(memberships, "org-c", "org_owner")).toBe("member");
+  });
+  it("returns null when the user has no membership in the selected org", () => {
+    expect(resolveOrgRole(memberships, "org-x", "org_owner")).toBeNull();
+    expect(resolveOrgRole([], "org-a", "member")).toBeNull();
+    expect(resolveOrgRole(null, "org-a")).toBeNull();
+  });
+  it("only platform_admin falls back to the global role", () => {
+    expect(resolveOrgRole([], "org-x", "platform_admin")).toBe("platform_admin");
+    expect(resolveOrgRole([], "org-x", "org_owner")).toBeNull();
+    expect(resolveOrgRole([], "org-x", "staff")).toBeNull();
+  });
+});
+describe("roleHas with legacy roles", () => {
+  it("treats legacy 'user' as member — no management capabilities", () => {
+    expect(roleHas("user", "dashboard")).toBe(true);
+    expect(roleHas("user", "members.view")).toBe(false);
+    expect(roleHas("user", "payments")).toBe(false);
+    expect(roleHas("user", "admin")).toBe(false);
+  });
+});
+describe("MANAGEMENT_ROLES", () => {
+  it("excludes member so members can never resolve to the management dashboard", () => {
+    expect(MANAGEMENT_ROLES.has("member")).toBe(false);
+    for (const role of ["platform_admin", "org_owner", "org_admin", "branch_manager", "staff", "trainer"]) {
+      expect(MANAGEMENT_ROLES.has(role)).toBe(true);
+    }
   });
 });

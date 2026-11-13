@@ -5,9 +5,11 @@ import ProtectedRoute from "./components/layout/ProtectedRoute";
 import { ToastProvider } from "./components/ui/Toast";
 import { ErrorBoundary } from "./components/layout/ErrorBoundary";
 import Login from "./pages/auth/Login";
-import { AuthProvider } from "./contexts/AuthContext";
-import { OrganizationProvider } from "./contexts/OrganizationContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { OrganizationProvider, useOrganization } from "./contexts/OrganizationContext";
+import { MANAGEMENT_ROLES, resolveOrgRole } from "./lib/permissions";
 const Dashboard = lazy(() => import("./pages/dashboard/Dashboard"));
+const MemberPortal = lazy(() => import("./pages/portal/MemberPortal"));
 const Members = lazy(() => import("./pages/members/Members"));
 const Classes = lazy(() => import("./pages/classes/Classes"));
 const Trainers = lazy(() => import("./pages/trainers/Trainers"));
@@ -31,6 +33,17 @@ const Inventory = lazy(() => import("./pages/inventory/Inventory"));
 const PageFallback = () => <div className="flex h-[60vh] items-center justify-center">
     <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-900 border-t-transparent" />
   </div>;
+const RoleHome = () => {
+  const { memberships, currentOrganization, isLoading } = useOrganization();
+  const { user } = useAuth();
+  if (isLoading) return <PageFallback />;
+  // Role is resolved from the selected org's membership only. Anything that
+  // is not a known management role (member, legacy "user", missing or
+  // unresolved membership) lands on the member portal — never the
+  // management dashboard.
+  const role = resolveOrgRole(memberships, currentOrganization?.id, user?.role);
+  return role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />;
+};
 function App() {
   return <AuthProvider>
       <OrganizationProvider>
@@ -44,7 +57,7 @@ function App() {
                   <Route element={<ProtectedRoute>
                       <Layout />
                     </ProtectedRoute>}>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/" element={<RoleHome />} />
                     <Route
     path="/members"
     element={<ProtectedRoute requiredCapability="members.view">

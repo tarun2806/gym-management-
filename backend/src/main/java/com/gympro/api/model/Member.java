@@ -54,6 +54,12 @@ public class Member {
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 
+    @Column(name = "user_id", length = 36)
+    private String userId;
+
     @Column(name = "created_at")
     private Instant createdAt;
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
 }

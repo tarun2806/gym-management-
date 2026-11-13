@@ -18,9 +18,12 @@ import java.util.List;
 public class SecurityConfig {
 
     private final FirebaseTokenFilter firebaseTokenFilter;
+    private final RateLimitFilter rateLimitFilter;
 
-    public SecurityConfig(FirebaseTokenFilter firebaseTokenFilter) {
+    public SecurityConfig(FirebaseTokenFilter firebaseTokenFilter,
+                          RateLimitFilter rateLimitFilter) {
         this.firebaseTokenFilter = firebaseTokenFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -32,14 +35,19 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health", "/api/webhooks/**").permitAll()
                         .anyRequest().authenticated())
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:4173}")
+    private String allowedOrigins;
+
     @Bean
     public CorsConfigurationSource corsSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:4173"));
+        config.setAllowedOrigins(java.util.Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim).filter(s -> !s.isEmpty()).toList());
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Org-Id", "X-Branch-Id"));
         config.setMaxAge(3600L);

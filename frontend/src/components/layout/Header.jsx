@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, User, Settings, LogOut, ChevronDown, Menu, ShieldCheck, Inbox, CalendarClock, Wrench } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { useOrganization } from "../../contexts/OrganizationContext";
 import {
   fetchNotifications,
   fetchReadIds,
@@ -9,7 +10,8 @@ import {
   mergeRead
 } from "../../lib/notifications";
 const Header = ({ onMenuClick }) => {
-  const { user, logout, can } = useAuth();
+  const { user, logout } = useAuth();
+  const { hasPermission: can } = useOrganization();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);

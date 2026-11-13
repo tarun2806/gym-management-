@@ -141,7 +141,7 @@ class ControllerBranchIsolationTest {
 
     @Test
     void paymentGetOtherBranchDenied() {
-        login("org1", "bA", "staff");
+        login("org1", "bA", "org_admin");
         var c = new PaymentController(paymentRepo, orgContext);
         var p = new com.gympro.api.model.Payment();
         p.setOrganizationId("org1"); p.setBranchId("bB");
@@ -153,7 +153,7 @@ class ControllerBranchIsolationTest {
     @Test
     void classBookingsRequireParentBranchAccess() {
         login("org1", "bA", "staff");
-        var c = new ClassController(classRepo, bookingRepo, orgContext);
+        var c = new ClassController(classRepo, bookingRepo, memberRepo, orgContext);
         var gymClass = new com.gympro.api.model.GymClass();
         gymClass.setOrganizationId("org1"); gymClass.setBranchId("bB"); gymClass.setId("c1");
         when(classRepo.findById("c1")).thenReturn(java.util.Optional.of(gymClass));
@@ -165,7 +165,7 @@ class ControllerBranchIsolationTest {
     @Test
     void classBookOtherBranchDenied() {
         login("org1", "bA", "staff");
-        var c = new ClassController(classRepo, bookingRepo, orgContext);
+        var c = new ClassController(classRepo, bookingRepo, memberRepo, orgContext);
         var gymClass = new com.gympro.api.model.GymClass();
         gymClass.setOrganizationId("org1"); gymClass.setBranchId("bB"); gymClass.setId("c1");
         gymClass.setStatus("Active"); gymClass.setCapacity(10); gymClass.setEnrolled(0);
@@ -229,6 +229,85 @@ class ControllerBranchIsolationTest {
                 () -> c.summary("org2")).getStatusCode().value());
         verifyNoInteractions(memberRepo, paymentRepo);
     }
+
+    @Test
+    void dashboardDeniedForMemberRole() {
+        login("org1", null, "member");
+        var c = new DashboardController(memberRepo, trainerRepo, classRepo,
+                attendanceRepo, paymentRepo, equipmentRepo, orgContext);
+        assertEquals(403, assertThrows(ResponseStatusException.class,
+                () -> c.summary("org1")).getStatusCode().value());
+        verifyNoInteractions(memberRepo, paymentRepo, attendanceRepo);
+    }
+
+    @Test
+    void dashboardDeniedForLegacyUserRole() {
+        // Legacy "user" role must never gain management access.
+        login("org1", null, "user");
+        var c = new DashboardController(memberRepo, trainerRepo, classRepo,
+                attendanceRepo, paymentRepo, equipmentRepo, orgContext);
+        assertEquals(403, assertThrows(ResponseStatusException.class,
+                () -> c.summary("org1")).getStatusCode().value());
+    }
+
+    @Test
+    void memberDeniedOrgWideManagementReads() {
+        login("org1", null, "member");
+        // Org-wide member list (PII), payments and invoices must 403 for members.
+        var members = new MemberController(memberRepo, orgContext);
+        assertEquals(403, statusOf(() -> members.list("org1", null, null)));
+        var payments = new PaymentController(paymentRepo, orgContext);
+        assertEquals(403, statusOf(() -> payments.list("org1", 0, 20)));
+        var invoices = new InvoiceController(invoiceRepo, orgContext);
+        assertEquals(403, statusOf(() -> invoices.list("org1")));
+        var payroll = new PayrollController(payrollRepo, orgContext);
+        assertEquals(403, statusOf(() -> payroll.list("org1")));
+        var equipment = new EquipmentController(equipmentRepo, orgContext);
+        assertEquals(403, statusOf(() -> equipment.list("org1")));
+        var attendance = new AttendanceController(attendanceRepo, memberRepo, orgContext);
+        assertEquals(403, statusOf(() -> attendance.list("org1", null)));
+        verifyNoInteractions(memberRepo, paymentRepo, invoiceRepo, payrollRepo,
+                equipmentRepo, attendanceRepo);
+    }
+
+    @Test
+    void staffReadsOpsDataButNotFinances() {
+        login("org1", null, "staff");
+        // Staff keep operational reads (invoices, members, attendance)…
+        var invoices = new InvoiceController(invoiceRepo, orgContext);
+        when(invoiceRepo.findByOrganizationId("org1")).thenReturn(List.of());
+        assertDoesNotThrow(() -> invoices.list("org1"));
+        // …but payroll/payments/expenses are owner+admin only.
+        var payments = new PaymentController(paymentRepo, orgContext);
+        assertEquals(403, statusOf(() -> payments.list("org1", 0, 20)));
+        var payroll = new PayrollController(payrollRepo, orgContext);
+        assertEquals(403, statusOf(() -> payroll.list("org1")));
+        var expenses = new ExpenseController(expenseRepo, orgContext);
+        assertEquals(403, statusOf(() -> expenses.list("org1")));
+    }
+
+    @Test
+    void trainerDeniedFinancesAndOpsReads() {
+        login("org1", null, "trainer");
+        var payments = new PaymentController(paymentRepo, orgContext);
+        assertEquals(403, statusOf(() -> payments.list("org1", 0, 20)));
+        var members = new MemberController(memberRepo, orgContext);
+        assertEquals(403, statusOf(() -> members.list("org1", null, null)));
+        var attendance = new AttendanceController(attendanceRepo, memberRepo, orgContext);
+        assertEquals(403, statusOf(() -> attendance.list("org1", null)));
+        // Trainers keep plan-management reads.
+        var plans = new com.gympro.api.training.PlanController(
+                mock(WorkoutPlanRepository.class), mock(DietPlanRepository.class), orgContext);
+        assertDoesNotThrow(() -> plans.listWorkouts("org1"));
+    }
+
+    private static int statusOf(ThrowingRunnable r) {
+        try { r.run(); return 200; }
+        catch (ResponseStatusException e) { return e.getStatusCode().value(); }
+    }
+
+    @FunctionalInterface
+    private interface ThrowingRunnable { void run(); }
 
     // ── Write-path: denied ops must not modify data ─────────────────────────
 

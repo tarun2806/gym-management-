@@ -174,6 +174,15 @@ public class MeController {
         out.put("status", u != null ? u.getStatus() : "active");
         out.put("email_verified", u != null ? u.isEmailVerified() : false);
         out.put("role", role);
+        // Per-organization roles — the client must resolve permissions from
+        // the membership of the currently selected org, not the global max.
+        out.put("memberships", memberships.stream()
+                .filter(m -> "active".equals(m.getStatus()))
+                .map(m -> Map.of(
+                        "organization_id", m.getOrganizationId(),
+                        "branch_id", m.getBranchId() != null ? m.getBranchId() : "",
+                        "role", m.getRole()))
+                .toList());
         return out;
     }
 
@@ -191,6 +200,17 @@ public class MeController {
         if (body.get("username") != null) u.setUsername(String.valueOf(body.get("username")));
         if (body.get("email") != null && !String.valueOf(body.get("email")).isBlank()) {
             u.setEmail(String.valueOf(body.get("email")));
+        }
+        // Platform-admin bootstrap: emails listed in PLATFORM_ADMIN_EMAILS env
+        // (comma-separated) are promoted on profile upsert. No public signup path.
+        String admins = System.getenv("PLATFORM_ADMIN_EMAILS");
+        if (admins != null && u.getEmail() != null) {
+            for (String a : admins.split(",")) {
+                if (a.trim().equalsIgnoreCase(u.getEmail().trim())) {
+                    u.setPlatformAdmin(true);
+                    break;
+                }
+            }
         }
         userRepository.save(u);
         return profile();

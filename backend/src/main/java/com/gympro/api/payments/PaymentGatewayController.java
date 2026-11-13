@@ -1,7 +1,9 @@
 package com.gympro.api.payments;
 
 import com.gympro.api.auth.OrgContextService;
+import com.gympro.api.model.OrganizationMembership;
 import com.gympro.api.model.Payment;
+import com.gympro.api.repository.MemberRepository;
 import com.gympro.api.repository.PaymentRepository;
 import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
@@ -36,17 +38,20 @@ import java.util.UUID;
 public class PaymentGatewayController {
 
     private final PaymentRepository paymentRepository;
+    private final MemberRepository memberRepository;
     private final OrgContextService orgContext;
     private final RazorpayClient razorpay;
     private final String webhookSecret;
     private final String keySecret;
 
     public PaymentGatewayController(PaymentRepository paymentRepository,
+                                    MemberRepository memberRepository,
                                     OrgContextService orgContext,
                                     @Value("${razorpay.key-id:}") String keyId,
                                     @Value("${razorpay.key-secret:}") String keySecret,
                                     @Value("${razorpay.webhook-secret:}") String webhookSecret) {
         this.paymentRepository = paymentRepository;
+        this.memberRepository = memberRepository;
         this.orgContext = orgContext;
         this.webhookSecret = webhookSecret;
         this.keySecret = keySecret;
@@ -91,7 +96,7 @@ public class PaymentGatewayController {
     @PostMapping("/verify")
     public ResponseEntity<?> verify(@RequestHeader("X-Org-Id") String orgId,
                                     @RequestBody Map<String, Object> body) {
-        orgContext.requireMembership(orgId);
+        OrganizationMembership caller = orgContext.requireMembership(orgId);
         if (razorpay == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Payment gateway not configured");
         }
@@ -129,7 +134,12 @@ public class PaymentGatewayController {
             Payment p = new Payment();
             p.setId(UUID.randomUUID().toString());
             p.setOrganizationId(orgId);
-            p.setMemberId(str(body, "member_id"));
+            // Members may only attach payments to their own linked member
+            // record — the client-supplied member_id is never trusted for them.
+            p.setMemberId("member".equals(caller.getRole())
+                    ? memberRepository.findByUserId(orgContext.principal().uid())
+                            .map(m -> m.getId()).orElse(null)
+                    : str(body, "member_id"));
             p.setAmount(razorpayPayment.get("amount") != null
                     ? new BigDecimal(razorpayPayment.get("amount").toString()).divide(new BigDecimal("100"))
                     : BigDecimal.ZERO);

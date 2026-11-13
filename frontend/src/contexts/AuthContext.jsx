@@ -51,10 +51,14 @@ const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const mapUser = async (fbUser) => {
+    // Refresh Firebase's authoritative state — the user may have just
+    // clicked the verification link in another tab.
+    try { await fbUser.reload(); } catch { /* offline — use cached claims */ }
     let role = "member";
     let username = fbUser.email?.split("@")[0] || "User";
     let status;
     let emailVerified = fbUser.emailVerified;
+    let memberships = [];
     try {
       const profile = await api("/api/me/profile");
       if (profile.role && profile.role in ROLE_CAPABILITIES) {
@@ -62,14 +66,18 @@ const AuthProvider = ({ children }) => {
       }
       if (profile.username) username = profile.username;
       status = profile.status;
-      emailVerified = profile.email_verified ?? fbUser.emailVerified;
+      // Firebase ID token claims are authoritative; MySQL mirrors them via
+      // FirebaseTokenFilter.syncUserFromToken. Never let a stale profile
+      // value override a freshly-verified Firebase user.
+      emailVerified = fbUser.emailVerified || profile.email_verified === true;
+      memberships = Array.isArray(profile.memberships) ? profile.memberships : [];
     } catch (error) {
       console.error("Error fetching user profile:", error);
     }
     if (role !== "org_owner" && isAccountDisabled(status)) {
       return null;
     }
-    if (role !== "org_owner" && !emailVerified) {
+    if (!emailVerified) {
       return null;
     }
     return {
@@ -77,7 +85,8 @@ const AuthProvider = ({ children }) => {
       username,
       email: fbUser.email || void 0,
       role,
-      permissions: ROLE_CAPABILITIES[role]
+      permissions: ROLE_CAPABILITIES[role],
+      memberships
     };
   };
   useEffect(() => {
@@ -129,6 +138,7 @@ const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password);
+      try { await cred.user.reload(); } catch { /* use cached claims */ }
       let profile = null;
       try {
         profile = await api("/api/me/profile");
@@ -137,12 +147,12 @@ const AuthProvider = ({ children }) => {
       const status = profile?.status;
       const legacyRole = profile?.role;
       const role = legacyRole && legacyRole in ROLE_CAPABILITIES ? legacyRole : legacyRole ? mapLegacyRole(legacyRole) : void 0;
-      const emailVerified = profile?.email_verified ?? cred.user.emailVerified;
+      const emailVerified = cred.user.emailVerified || profile?.email_verified === true;
       if (role !== "org_owner" && isAccountDisabled(status)) {
         await signOut(auth);
         return { ok: false, error: DISABLED_MESSAGE };
       }
-      if (role !== "org_owner" && !emailVerified) {
+      if (!emailVerified) {
         await signOut(auth);
         return { ok: false, error: UNVERIFIED_MESSAGE };
       }
@@ -210,6 +220,35 @@ const AuthProvider = ({ children }) => {
     if (!user) return false;
     return user.role === role;
   };
+  // Re-check Firebase's authoritative verification state (user returns from
+  // the email link) and refresh profile + auth state.
+  const refreshVerification = async () => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) return { ok: false, error: "Not signed in." };
+    try {
+      await fbUser.reload();
+      await fbUser.getIdToken(true);
+      const mapped = await mapUser(fbUser);
+      if (mapped) {
+        setUser(mapped);
+        setIsAuthenticated(true);
+        return { ok: true, verified: fbUser.emailVerified };
+      }
+      return { ok: false, verified: false };
+    } catch (error) {
+      return { ok: false, error: authError(error) };
+    }
+  };
+  const resendVerification = async () => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) return { ok: false, error: "Not signed in." };
+    try {
+      await sendEmailVerification(fbUser);
+      return ok;
+    } catch (error) {
+      return { ok: false, error: authError(error) };
+    }
+  };
   const value = {
     user,
     isAuthenticated,
@@ -218,6 +257,8 @@ const AuthProvider = ({ children }) => {
     signUp,
     signInWithGoogle,
     resetPassword,
+    refreshVerification,
+    resendVerification,
     logout,
     hasPermission,
     can,

@@ -29,7 +29,7 @@ public class EquipmentController {
 
     @GetMapping
     public List<Equipment> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? equipmentRepository.findByOrganizationIdAndBranchId(orgId, branch)

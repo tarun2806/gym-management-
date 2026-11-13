@@ -35,7 +35,7 @@ public class InventoryController {
 
     @GetMapping("/products")
     public List<Product> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? productRepository.findByOrganizationIdAndBranchId(orgId, branch)
@@ -110,7 +110,7 @@ public class InventoryController {
 
     @GetMapping("/stock-movements")
     public List<StockMovement> allMovements(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         List<StockMovement> rows = movementRepository.findByOrganizationIdOrderByDateDesc(orgId);
         return branch != null ? rows.stream()
@@ -119,7 +119,7 @@ public class InventoryController {
 
     @GetMapping("/products/{id}/movements")
     public List<StockMovement> movements(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         Product p = productRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))

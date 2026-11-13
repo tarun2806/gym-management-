@@ -10,6 +10,7 @@ import java.util.Optional;
 public interface InvoiceRepository extends JpaRepository<Invoice, String> {
     List<Invoice> findByOrganizationId(String organizationId);
     List<Invoice> findByOrganizationIdAndBranchId(String organizationId, String branchId);
+    List<Invoice> findByMemberId(String memberId);
     Optional<Invoice> findByOrganizationIdAndInvoiceNumber(String organizationId, String invoiceNumber);
     Optional<Invoice> findByOrganizationIdAndBranchIdAndInvoiceNumber(String organizationId, String branchId, String invoiceNumber);
 }

@@ -31,7 +31,7 @@ public class PayrollController {
 
     @GetMapping
     public List<PayrollEntry> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireFinance(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? payrollRepository.findByOrganizationIdAndBranchId(orgId, branch)

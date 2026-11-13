@@ -29,7 +29,7 @@ public class TrainerController {
 
     @GetMapping
     public List<Trainer> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? trainerRepository.findByOrganizationIdAndBranchId(orgId, branch)
@@ -38,7 +38,7 @@ public class TrainerController {
 
     @GetMapping("/{id}")
     public Trainer get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         return trainerRepository.findById(id)
                 .filter(t -> t.getOrganizationId().equals(orgId))
                 .filter(t -> orgContext.canSeeBranch(m, t.getBranchId()))

@@ -1,7 +1,9 @@
 package com.gympro.api.security;
 
 import com.gympro.api.model.OrganizationMembership;
+import com.gympro.api.model.User;
 import com.gympro.api.repository.OrganizationMembershipRepository;
+import com.gympro.api.repository.UserRepository;
 import com.google.firebase.auth.FirebaseToken;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,11 +28,43 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
 
     private final FirebaseAuthProvider authProvider;
     private final OrganizationMembershipRepository membershipRepository;
+    private final UserRepository userRepository;
 
     public FirebaseTokenFilter(FirebaseAuthProvider authProvider,
-                               OrganizationMembershipRepository membershipRepository) {
+                               OrganizationMembershipRepository membershipRepository,
+                               UserRepository userRepository) {
         this.authProvider = authProvider;
         this.membershipRepository = membershipRepository;
+        this.userRepository = userRepository;
+    }
+
+    /**
+     * Sync email + verification state from the verified Firebase token claims
+     * into the MySQL users row. Firebase is authoritative — stale or
+     * client-supplied values can never downgrade or forge verification.
+     */
+    public void syncUserFromToken(String uid, String email, FirebaseToken token) {
+        if (uid == null || uid.isBlank()) return;
+        Object claim = token.getClaims().get("email_verified");
+        boolean verified = Boolean.TRUE.equals(claim) || "true".equals(String.valueOf(claim));
+        User u = userRepository.findById(uid).orElseGet(() -> {
+            User n = new User();
+            n.setId(uid);
+            n.setCreatedAt(java.time.Instant.now());
+            return n;
+        });
+        boolean changed = false;
+        if (email != null && !email.isBlank() && !email.equalsIgnoreCase(u.getEmail())) {
+            // Email changed in Firebase → require re-verification for the new address.
+            u.setEmail(email);
+            u.setEmailVerified(verified);
+            changed = true;
+        } else if (verified && !u.isEmailVerified()) {
+            u.setEmailVerified(true);
+            changed = true;
+        }
+        // Never downgrade verified=true from a stale/forged token claim of false.
+        if (changed) userRepository.save(u);
     }
 
     @Override
@@ -43,6 +77,7 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
             if (token != null) {
                 String uid = token.getUid();
                 String email = token.getEmail();
+                syncUserFromToken(uid, email, token);
 
                 List<AppUserPrincipal.OrgMembershipView> memberships =
                         membershipRepository.findByUserIdAndStatus(uid, "active")

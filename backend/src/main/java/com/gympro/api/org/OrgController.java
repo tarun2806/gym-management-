@@ -7,6 +7,7 @@ import com.gympro.api.model.OrganizationMembership;
 import com.gympro.api.repository.BranchRepository;
 import com.gympro.api.repository.OrganizationMembershipRepository;
 import com.gympro.api.repository.OrganizationRepository;
+import com.gympro.api.repository.UserRepository;
 import com.gympro.api.security.AppUserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.http.HttpStatus;
@@ -26,16 +27,19 @@ public class OrgController {
     private final OrganizationRepository organizationRepository;
     private final BranchRepository branchRepository;
     private final OrganizationMembershipRepository membershipRepository;
+    private final UserRepository userRepository;
     private final OrgContextService orgContext;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public OrgController(OrganizationRepository organizationRepository,
                          BranchRepository branchRepository,
                          OrganizationMembershipRepository membershipRepository,
+                         UserRepository userRepository,
                          OrgContextService orgContext) {
         this.organizationRepository = organizationRepository;
         this.branchRepository = branchRepository;
         this.membershipRepository = membershipRepository;
+        this.userRepository = userRepository;
         this.orgContext = orgContext;
     }
 
@@ -106,11 +110,17 @@ public class OrgController {
 
     // ─── Organization CRUD ───────────────────────────────────────────────────
 
-    /** Create an org; caller becomes its org_owner via a membership row. */
+    /** Create an org — platform admins only. Owner onboarding uses /api/owner/register. */
     @PostMapping("/organizations")
     @Transactional
     public Organization createOrganization(@RequestBody Map<String, Object> body) {
         AppUserPrincipal p = orgContext.principal();
+        boolean platformAdmin = userRepository.findById(p.uid())
+                .map(com.gympro.api.model.User::isPlatformAdmin).orElse(false);
+        if (!platformAdmin) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Organization creation requires an owner activation key — use /api/owner/register");
+        }
         String name = str(body, "name");
         if (name == null || name.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");

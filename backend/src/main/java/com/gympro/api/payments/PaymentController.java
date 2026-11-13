@@ -38,7 +38,7 @@ public class PaymentController {
     public List<Payment> list(@RequestHeader("X-Org-Id") String orgId,
                               @RequestParam(defaultValue = "0") int page,
                               @RequestParam(defaultValue = "20") int size) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireFinance(orgId);
         String branch = orgContext.readBranchScope(m);
         List<Payment> rows = paymentRepository
                 .findByOrganizationIdOrderByCreatedAtDesc(orgId,
@@ -50,7 +50,7 @@ public class PaymentController {
 
     @GetMapping("/{id}")
     public Payment get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireFinance(orgId);
         return paymentRepository.findById(id)
                 .filter(p -> p.getOrganizationId().equals(orgId))
                 .filter(p -> orgContext.canSeeBranch(m, p.getBranchId()))

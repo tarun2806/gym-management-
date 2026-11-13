@@ -43,7 +43,8 @@ public class DashboardController {
 
     @GetMapping
     public Map<String, Object> summary(@RequestHeader("X-Org-Id") String orgId) {
-        com.gympro.api.model.OrganizationMembership m = orgContext.requireMembership(orgId);
+        com.gympro.api.model.OrganizationMembership m = orgContext.requireRole(orgId,
+                "platform_admin", "org_owner", "org_admin", "branch_manager", "staff", "trainer");
         String branch = orgContext.readBranchScope(m);
         LocalDate today = LocalDate.now();
         LocalDateTime dayStart = today.atStartOfDay();
@@ -76,27 +77,31 @@ public class DashboardController {
             equipment = equipmentRepository.findByOrganizationId(orgId).size();
         }
 
-        LocalDate monthStart = today.withDayOfMonth(1);
-        var payments = paymentRepository
-                .findByOrganizationIdOrderByCreatedAtDesc(orgId,
-                        org.springframework.data.domain.PageRequest.of(0, 1000))
-                .getContent().stream()
-                .filter(p -> branch == null || branch.equals(p.getBranchId()))
-                .toList();
-        java.math.BigDecimal monthRevenue = payments.stream()
-                .filter(p -> p.getCreatedAt() != null
-                        && !p.getCreatedAt().isBefore(monthStart.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant())
-                        && "completed".equals(p.getStatus()))
-                .map(p -> p.getAmount() != null ? p.getAmount() : java.math.BigDecimal.ZERO)
-                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-
-        return Map.of(
-                "total_members", totalMembers,
-                "active_members", activeMembers,
-                "trainers", trainers,
-                "classes", classes,
-                "attendance_today", attendanceToday,
-                "equipment", equipment,
-                "monthly_revenue", monthRevenue);
+        java.util.Map<String, Object> out = new java.util.LinkedHashMap<>();
+        out.put("total_members", totalMembers);
+        out.put("active_members", activeMembers);
+        out.put("trainers", trainers);
+        out.put("classes", classes);
+        out.put("attendance_today", attendanceToday);
+        out.put("equipment", equipment);
+        // Revenue is finance data — owner/admin only, matching the
+        // payments/payroll/expenses endpoints.
+        if (java.util.Arrays.asList(OrgContextService.FINANCE_ROLES).contains(m.getRole())) {
+            LocalDate monthStart = today.withDayOfMonth(1);
+            var payments = paymentRepository
+                    .findByOrganizationIdOrderByCreatedAtDesc(orgId,
+                            org.springframework.data.domain.PageRequest.of(0, 1000))
+                    .getContent().stream()
+                    .filter(p -> branch == null || branch.equals(p.getBranchId()))
+                    .toList();
+            java.math.BigDecimal monthRevenue = payments.stream()
+                    .filter(p -> p.getCreatedAt() != null
+                            && !p.getCreatedAt().isBefore(monthStart.atStartOfDay().atZone(java.time.ZoneId.systemDefault()).toInstant())
+                            && "completed".equals(p.getStatus()))
+                    .map(p -> p.getAmount() != null ? p.getAmount() : java.math.BigDecimal.ZERO)
+                    .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+            out.put("monthly_revenue", monthRevenue);
+        }
+        return out;
     }
 }

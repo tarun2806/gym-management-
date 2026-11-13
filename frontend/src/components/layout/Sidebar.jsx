@@ -1,5 +1,7 @@
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { useOrganization } from "../../contexts/OrganizationContext";
+import { resolveOrgRole } from "../../lib/permissions";
 import {
   Users,
   Calendar,
@@ -50,13 +52,15 @@ const SIDEBAR_GROUPS = [
 const Sidebar = ({ onClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, can } = useAuth();
+  const { user, logout } = useAuth();
+  const { hasPermission, memberships, currentOrganization } = useOrganization();
+  const orgRole = resolveOrgRole(memberships, currentOrganization?.id, user?.role);
   const handleLogout = async () => {
     await logout();
     navigate("/login");
     if (onClose) onClose();
   };
-  const visibleGroups = SIDEBAR_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => can(item.cap)) })).filter((group) => group.items.length > 0);
+  const visibleGroups = SIDEBAR_GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => hasPermission(item.cap) && !(orgRole === "member" && item.cap === "dashboard")) })).filter((group) => group.items.length > 0);
   return <div className="h-full flex flex-col bg-slate-950 text-white w-64 border-r border-white/5 relative">
             {
     /* Glossy Backdrop */

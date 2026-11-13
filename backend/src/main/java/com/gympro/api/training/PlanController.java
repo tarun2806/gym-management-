@@ -36,7 +36,7 @@ public class PlanController {
 
     @GetMapping("/workout-plans")
     public List<WorkoutPlan> listWorkouts(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
+        orgContext.requirePlanRoles(orgId);
         return workoutRepository.findByOrganizationId(orgId);
     }
 
@@ -100,7 +100,7 @@ public class PlanController {
 
     @GetMapping("/diet-plans")
     public List<DietPlan> listDiet(@RequestHeader("X-Org-Id") String orgId) {
-        orgContext.requireMembership(orgId);
+        orgContext.requirePlanRoles(orgId);
         return dietRepository.findByOrganizationId(orgId);
     }
 

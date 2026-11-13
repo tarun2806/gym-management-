@@ -10,6 +10,8 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/expenses/ExpenseController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/inventory/InventoryController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/jobs/MembershipExpiryScheduler.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/memberinvite/MemberInvitationController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/memberinvite/MemberSelfController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/members/MemberController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/migration/MigrationImportRunner.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Attendance.java
@@ -21,10 +23,12 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/GymClass.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Invoice.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Member.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/MemberInvitation.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/MembershipPlan.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Notification.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Organization.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/OrganizationMembership.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/OwnerActivationKey.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Payment.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/PayrollEntry.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/Product.java
@@ -38,10 +42,12 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/model/WorkoutPlan.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/notifications/NotificationController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/org/OrgController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/owner/OwnerRegistrationController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payments/PaymentController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payments/PaymentGatewayController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/payroll/PayrollController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/plans/MembershipPlanController.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/platform/PlatformAdminController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/pt/PtController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/AttendanceRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/BranchRepository.java
@@ -51,11 +57,13 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/ExpenseRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/GymClassRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/InvoiceRepository.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/MemberInvitationRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/MemberRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/MembershipPlanRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/NotificationRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/OrganizationMembershipRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/OrganizationRepository.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/OwnerActivationKeyRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/PaymentRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/PayrollEntryRepository.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/repository/ProductRepository.java
@@ -70,6 +78,7 @@
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/AppUserPrincipal.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/FirebaseAuthProvider.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/FirebaseTokenFilter.java
+/Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/RateLimitFilter.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/security/SecurityConfig.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/settings/SettingsController.java
 /Users/pc/Desktop/gym-management-/backend/src/main/java/com/gympro/api/trainers/TrainerController.java

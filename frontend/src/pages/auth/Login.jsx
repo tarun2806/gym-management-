@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck, CalendarCheck2, Users2, Wallet  , Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { api } from "../../lib/api";
 import { Button, Card } from "../../components/ui";
 const HIGHLIGHTS = [
   { icon: Users2, title: "Members & memberships", body: "One record per member with plan, expiry and renewal history." },
@@ -26,6 +27,14 @@ const passwordStrength = (value) => {
 };
 const Login = () => {
   const [mode, setMode] = useState("login");
+  const [ownerStep, setOwnerStep] = useState("key");
+  const [ownerForm, setOwnerForm] = useState({ key: "", org_name: "", branch_name: "", gym_name: "", address: "", phone: "" });
+  const [ownerError, setOwnerError] = useState("");
+  const [ownerDone, setOwnerDone] = useState(false);
+  const [memberToken, setMemberToken] = useState("");
+  const [memberBusy, setMemberBusy] = useState(false);
+  const [memberError, setMemberError] = useState("");
+  const [memberDone, setMemberDone] = useState(false);
   const [formData, setFormData] = useState({ email: "", password: "", confirmPassword: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -33,7 +42,7 @@ const Login = () => {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, signUp, signInWithGoogle, resetPassword } = useAuth();
+  const { login, signUp, signInWithGoogle, resetPassword, isAuthenticated, refreshVerification, resendVerification } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname || "/";
@@ -187,19 +196,40 @@ const Login = () => {
                 </p>
               </header>
 
-              {mode !== "forgot-password" && <div className="mb-6 flex gap-1 rounded-xl bg-slate-950/60 p-1 ring-1 ring-white/5">
-                  {["login", "signup"].map((option) => <button
+              {mode === "member" && <MemberRedeem
+                  token={memberToken} setToken={setMemberToken}
+                  busy={memberBusy} setBusy={setMemberBusy}
+                  error={memberError} setError={setMemberError}
+                  done={memberDone} setDone={setMemberDone}
+                  authenticated={isAuthenticated}
+                  onExit={() => switchMode("login")}
+              />}
+
+              {mode === "owner" && <OwnerRegister
+                  step={ownerStep}
+                  setStep={setOwnerStep}
+                  form={ownerForm}
+                  setForm={setOwnerForm}
+                  error={ownerError}
+                  setError={setOwnerError}
+                  done={ownerDone}
+                  setDone={setOwnerDone}
+                  onExit={() => switchMode("login")}
+              />}
+
+              {mode !== "forgot-password" && mode !== "owner" && mode !== "member" && <div className="mb-6 flex gap-1 rounded-xl bg-slate-950/60 p-1 ring-1 ring-white/5">
+                  {["login", "signup", "owner", "member"].map((option) => <button
     key={option}
     type="button"
     onClick={() => switchMode(option)}
     aria-pressed={mode === option}
     className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-colors ${mode === option ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-slate-200"}`}
   >
-                      {option === "login" ? "Sign in" : "Sign up"}
+                      {option === "login" ? "Sign in" : option === "signup" ? "Sign up" : option === "owner" ? "Create a Gym" : "Join a Gym"}
                     </button>)}
                 </div>}
 
-              <form onSubmit={handleSubmit} noValidate aria-busy={busy} className="space-y-5">
+              {mode !== "owner" && mode !== "member" && (<form onSubmit={handleSubmit} noValidate aria-busy={busy} className="space-y-5">
                 <div className="space-y-1.5">
                   <label htmlFor="auth-email" className="label-caps">
                     Email address
@@ -308,8 +338,24 @@ const Login = () => {
                   </div>}
 
                 {formError && <div role="alert" className="flex items-start gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-3">
-                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
                     <p className="text-[13px] font-medium leading-relaxed text-rose-200">{formError}</p>
+                  </div>}
+                {formError && formError.toLowerCase().includes("verify your email") && <div className="flex gap-2">
+                    <button type="button" onClick={async () => {
+                        setLoading(true);
+                        const r = await refreshVerification();
+                        setLoading(false);
+                        if (r?.ok) navigate(redirectTo, { replace: true });
+                        else setFormError("Still unverified — check your inbox and try again.");
+                      }} className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-indigo-500">
+                      I've verified — refresh status
+                    </button>
+                    <button type="button" onClick={async () => {
+                        const r = await resendVerification();
+                        setFormError(r?.ok ? "Verification email resent — check your inbox." : (r?.error || "Could not resend."));
+                      }} className="flex-1 rounded-lg border border-white/10 px-3 py-2 text-[13px] font-semibold text-slate-300 hover:bg-white/5">
+                      Resend email
+                    </button>
                   </div>}
 
                 {notice && <div role="status" className="flex items-start gap-2.5 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3">
@@ -336,9 +382,9 @@ const Login = () => {
   >
                     Back to sign in
                   </button>}
-              </form>
+              </form>)}
 
-              {mode !== "forgot-password" && <>
+              {mode !== "forgot-password" && mode !== "owner" && mode !== "member" && <>
                   <div className="my-6 flex items-center gap-3">
                     <span className="h-px flex-1 bg-white/10" />
                     <span className="text-[11px] font-medium uppercase tracking-wider text-slate-500">or</span>
@@ -369,6 +415,107 @@ const Login = () => {
       </main>
     </div>;
 };
+const OwnerRegister = ({ step, setStep, form, setForm, error, setError, done, setDone, onExit }) => {
+  const [busy, setBusy] = useState(false);
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const validateKey = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await api("/api/owner/validate-key", { method: "POST", body: JSON.stringify({ key: form.key.trim() }) });
+      setStep("details");
+    } catch (err) {
+      setError(err.message || "Invalid activation key.");
+    } finally { setBusy(false); }
+  };
+  const register = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await api("/api/owner/register", {
+        method: "POST",
+        body: JSON.stringify({
+          key: form.key.trim(),
+          org_name: form.org_name.trim(),
+          branch_name: form.branch_name.trim() || form.gym_name.trim(),
+          gym_name: form.gym_name.trim(),
+          address: form.address.trim(),
+          phone: form.phone.trim()
+        })
+      });
+      setDone(true);
+      setTimeout(() => window.location.assign("/#/"), 1200);
+    } catch (err) {
+      setError(err.message || "Registration failed.");
+    } finally { setBusy(false); }
+  };
+  if (done) {
+    return <div className="rounded-xl bg-emerald-500/10 p-4 text-center text-emerald-300 ring-1 ring-emerald-500/30">
+      Gym created — taking you to your dashboard…
+    </div>;
+  }
+  if (step === "key") {
+    return <form onSubmit={validateKey} className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="label-caps">Owner activation key</label>
+        <input value={form.key} onChange={(e) => set("key", e.target.value)} required
+          placeholder="gympro_own_…" className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white" />
+      </div>
+      {error && <p className="text-[12px] font-medium text-rose-400">{error}</p>}
+      <Button type="submit" disabled={busy || !form.key.trim()} className="w-full">{busy ? "Validating…" : "Continue"}</Button>
+      <button type="button" onClick={onExit} className="w-full text-center text-[12px] text-slate-400 hover:text-slate-200">Back to sign in</button>
+    </form>;
+  }
+  return <form onSubmit={register} className="space-y-4">
+    <p className="text-[12px] text-emerald-300">✓ Activation key accepted</p>
+    {[["org_name", "Gym / organization name"], ["branch_name", "First branch name"], ["gym_name", "Display name (optional)"], ["address", "Address (optional)"], ["phone", "Phone (optional)"]].map(([k, label]) => (
+      <div key={k} className="space-y-1.5">
+        <label className="label-caps">{label}</label>
+        <input value={form[k]} onChange={(e) => set(k, e.target.value)} required={k === "org_name" || k === "branch_name"}
+          className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white" />
+      </div>
+    ))}
+    {error && <p className="text-[12px] font-medium text-rose-400">{error}</p>}
+    <Button type="submit" disabled={busy} className="w-full">{busy ? "Creating…" : "Create gym"}</Button>
+    <button type="button" onClick={onExit} className="w-full text-center text-[12px] text-slate-400 hover:text-slate-200">Cancel</button>
+  </form>;
+};
+
+const MemberRedeem = ({ token, setToken, busy, setBusy, error, setError, done, setDone, authenticated, onExit }) => {
+  const redeem = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      await api("/api/member-invitations/redeem", { method: "POST", body: JSON.stringify({ token: token.trim() }) });
+      setDone(true);
+      setTimeout(() => window.location.assign("/#/"), 1200);
+    } catch (err) {
+      setError(err.message || "Could not redeem invitation.");
+    } finally { setBusy(false); }
+  };
+  if (done) {
+    return <div className="rounded-xl bg-emerald-500/10 p-4 text-center text-emerald-300 ring-1 ring-emerald-500/30">
+      Joined — taking you to your member portal…
+    </div>;
+  }
+  return <form onSubmit={redeem} className="space-y-4">
+    {!authenticated && <p className="rounded-lg bg-amber-500/10 p-3 text-[12px] text-amber-300 ring-1 ring-amber-500/30">
+      Sign in or create an account first, then return here with your invitation token.
+    </p>}
+    <div className="space-y-1.5">
+      <label className="label-caps">Gym invitation token</label>
+      <input value={token} onChange={(e) => setToken(e.target.value)} required
+        placeholder="gympro_mem_…" disabled={!authenticated}
+        className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white disabled:opacity-50" />
+    </div>
+    {error && <p className="text-[12px] font-medium text-rose-400">{error}</p>}
+    <Button type="submit" disabled={busy || !authenticated || !token.trim()} className="w-full">
+      {busy ? "Joining…" : "Join gym"}
+    </Button>
+    <button type="button" onClick={onExit} className="w-full text-center text-[12px] text-slate-400 hover:text-slate-200">Back to sign in</button>
+  </form>;
+};
+
 var Login_default = Login;
 export {
   Login_default as default

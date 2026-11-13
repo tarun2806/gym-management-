@@ -159,11 +159,42 @@ const equipmentService = {
     invalidateAll("equipment");
   }
 };
+const memberInviteService = {
+  list: (scope) => api("/api/member-invitations", { scope: toScope(scope) }),
+  create: (scope, memberId) => api("/api/member-invitations", {
+    method: "POST",
+    scope: toScope(scope),
+    body: { member_id: memberId }
+  }),
+  revoke: (scope, id) => api(`/api/member-invitations/${id}/revoke`, {
+    method: "POST",
+    scope: toScope(scope)
+  })
+};
+const memberPortalService = {
+  member: () => api("/api/me/member"),
+  attendance: (page = 0, from, to) => {
+    const params = new URLSearchParams({ page: String(page) });
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    return api(`/api/me/attendance?${params}`);
+  },
+  payments: (page = 0) => api(`/api/me/payments?page=${page}`),
+  invoices: () => api("/api/me/invoices"),
+  workoutPlans: () => api("/api/me/workout-plans"),
+  dietPlans: () => api("/api/me/diet-plans"),
+  classes: () => api("/api/me/classes"),
+  classBookings: () => api("/api/me/class-bookings"),
+  bookClass: (classId) => api(`/api/me/class-bookings/${classId}/book`, { method: "POST" }),
+  cancelBooking: (bookingId) => api(`/api/me/class-bookings/${bookingId}/cancel`, { method: "POST" })
+};
 export {
   PAYMENT_PAGE_SIZE,
   attendanceService,
   classService,
   equipmentService,
+  memberInviteService,
+  memberPortalService,
   memberService,
   paymentService,
   trainerService

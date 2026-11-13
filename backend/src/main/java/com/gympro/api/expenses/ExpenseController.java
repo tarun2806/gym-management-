@@ -30,7 +30,7 @@ public class ExpenseController {
 
     @GetMapping
     public List<Expense> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireFinance(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? expenseRepository.findByOrganizationIdAndBranchId(orgId, branch)

@@ -37,7 +37,7 @@ public class PtController {
 
     @GetMapping("/pt-packages")
     public List<PtPackage> listPackages(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireBackoffice(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? packageRepository.findByOrganizationIdAndBranchId(orgId, branch)
@@ -86,7 +86,7 @@ public class PtController {
     @GetMapping("/pt-sessions")
     public List<PtSession> listSessions(@RequestHeader("X-Org-Id") String orgId,
                                         @RequestParam(required = false) String date) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireBackoffice(orgId);
         String branch = orgContext.readBranchScope(m);
         if (date != null) {
             List<PtSession> rows = sessionRepository.findByOrganizationIdAndScheduledDate(orgId, LocalDate.parse(date));

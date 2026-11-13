@@ -102,8 +102,32 @@ const ROLE_CAPABILITIES = {
   member: ["dashboard"]
 };
 const roleHas = (role, cap) => {
-  if (!role) return false;
-  return ROLE_CAPABILITIES[role]?.includes(cap) ?? false;
+  const normalized = normalizeRole(role);
+  if (!normalized) return false;
+  return ROLE_CAPABILITIES[normalized]?.includes(cap) ?? false;
+};
+/** Normalize legacy role strings (user/owner/admin/manager) to canonical roles. */
+const normalizeRole = (role) => {
+  if (!role) return null;
+  if (role in ROLE_CAPABILITIES) return role;
+  return mapLegacyRole(role);
+};
+/** Roles that may see the management dashboard. */
+const MANAGEMENT_ROLES = new Set([
+  "platform_admin", "org_owner", "org_admin", "branch_manager", "staff", "trainer"
+]);
+/**
+ * Resolve the effective role for a membership list + selected org.
+ * Returns the normalized role, or null when no active membership exists
+ * for that org — callers must treat null as "no management access".
+ */
+const resolveOrgRole = (memberships, orgId, fallbackGlobalRole) => {
+  const membership = (memberships ?? []).find((m) => m.org_id === orgId);
+  const role = normalizeRole(membership?.role);
+  if (role) return role;
+  // Platform admins are not org members; their authority is platform-level.
+  if (normalizeRole(fallbackGlobalRole) === "platform_admin") return "platform_admin";
+  return null;
 };
 const assignableRoles = (role) => {
   const normalizedRole = role && (role === "owner" || role === "admin" || role === "manager" || role === "user") ? mapLegacyRole(role) : role;
@@ -143,9 +167,12 @@ const mapToLegacyRole = (role) => {
   return mapping[role] || "user";
 };
 export {
+  MANAGEMENT_ROLES,
   ROLE_CAPABILITIES,
   assignableRoles,
   mapLegacyRole,
   mapToLegacyRole,
+  normalizeRole,
+  resolveOrgRole,
   roleHas
 };

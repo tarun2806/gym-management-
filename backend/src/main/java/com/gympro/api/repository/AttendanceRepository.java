@@ -23,6 +23,8 @@ public interface AttendanceRepository extends JpaRepository<Attendance, String> 
 
     Page<Attendance> findByOrganizationIdOrderByCheckInDesc(String organizationId, Pageable pageable);
     Page<Attendance> findByOrganizationIdAndBranchIdOrderByCheckInDesc(String organizationId, String branchId, Pageable pageable);
+    Page<Attendance> findByMemberIdOrderByCheckInDesc(String memberId, Pageable pageable);
+    Page<Attendance> findByMemberIdAndCheckInBetweenOrderByCheckInDesc(String memberId, LocalDateTime from, LocalDateTime to, Pageable pageable);
 
     Optional<Attendance> findFirstByOrganizationIdAndMemberIdAndCheckOutIsNullOrderByCheckInDesc(
             String organizationId, String memberId);

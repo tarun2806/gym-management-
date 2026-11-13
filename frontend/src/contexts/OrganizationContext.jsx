@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api";
-import { roleHas } from "../lib/permissions";
+import { roleHas, resolveOrgRole } from "../lib/permissions";
 import { clearCache } from "../lib/cache";
 import { useAuth } from "./AuthContext";
 const OrganizationContext = createContext(void 0);
@@ -43,7 +43,7 @@ const mapMembership = (row) => {
   return { ...rest, org_id: String(organization_id ?? "") };
 };
 const OrganizationProvider = ({ children }) => {
-  const { user, isAuthenticated, isLoading: authLoading, can } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [currentOrganization, setCurrentOrganizationState] = useState(null);
   const [currentBranch, setCurrentBranchState] = useState(null);
   const [organizations, setOrganizations] = useState([]);
@@ -176,11 +176,12 @@ const OrganizationProvider = ({ children }) => {
     if (match) setCurrentBranchState(match);
   }, [user, currentOrganization, branches, currentBranch]);
   const hasPermission = useCallback((permission) => {
-    const membership = memberships.find((m) => m.org_id === currentOrganization?.id);
-    const role = membership?.role;
-    if (role) return roleHas(role, permission);
-    return can(permission);
-  }, [memberships, currentOrganization, can]);
+    // Role comes from the selected org's membership only. The global
+    // highest-privilege role is never used — except platform_admin, whose
+    // authority is platform-level rather than org-scoped.
+    const role = resolveOrgRole(memberships, currentOrganization?.id, user?.role);
+    return roleHas(role, permission);
+  }, [memberships, currentOrganization, user]);
   const switchOrganization = useCallback((orgId) => {
     const org = organizations.find((o) => o.id === orgId);
     if (org) selectOrganization(org);

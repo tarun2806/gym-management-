@@ -30,7 +30,7 @@ public class InvoiceController {
 
     @GetMapping
     public List<Invoice> list(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? invoiceRepository.findByOrganizationIdAndBranchId(orgId, branch)

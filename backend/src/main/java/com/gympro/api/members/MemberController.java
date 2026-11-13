@@ -34,7 +34,7 @@ public class MemberController {
     public List<Member> list(@RequestHeader("X-Org-Id") String orgId,
                              @RequestParam(required = false) Integer page,
                              @RequestParam(required = false) Integer size) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         if (page != null) {
             Page<Member> p = branch != null
@@ -51,7 +51,7 @@ public class MemberController {
 
     @GetMapping("/active")
     public List<Member> active(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? memberRepository.findByOrganizationIdAndBranchIdAndStatus(orgId, branch, "Active")
@@ -60,7 +60,7 @@ public class MemberController {
 
     @GetMapping("/expiring")
     public List<Member> expiring(@RequestHeader("X-Org-Id") String orgId) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         String branch = orgContext.readBranchScope(m);
         return branch != null
                 ? memberRepository.findByOrganizationIdAndBranchIdAndExpiryDateBefore(orgId, branch, LocalDate.now())
@@ -69,7 +69,7 @@ public class MemberController {
 
     @GetMapping("/{id}")
     public Member get(@RequestHeader("X-Org-Id") String orgId, @PathVariable String id) {
-        OrganizationMembership m = orgContext.requireMembership(orgId);
+        OrganizationMembership m = orgContext.requireOps(orgId);
         return memberRepository.findById(id)
                 .filter(x -> x.getOrganizationId().equals(orgId))
                 .filter(x -> orgContext.canSeeBranch(m, x.getBranchId()))

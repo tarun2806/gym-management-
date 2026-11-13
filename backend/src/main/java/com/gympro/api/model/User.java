@@ -25,6 +25,9 @@ public class User {
     @Column(nullable = false)
     private String status = "active";
 
+    @Column(name = "platform_admin", nullable = false)
+    private boolean platformAdmin;
+
     @Column(name = "notification_state", columnDefinition = "json")
     private String notificationState;
 
@@ -57,4 +60,6 @@ public class User {
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(Instant lastLoginAt) { this.lastLoginAt = lastLoginAt; }
+    public boolean isPlatformAdmin() { return platformAdmin; }
+    public void setPlatformAdmin(boolean platformAdmin) { this.platformAdmin = platformAdmin; }
 }

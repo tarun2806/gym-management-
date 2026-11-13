@@ -11,5 +11,7 @@ public interface ClassBookingRepository extends JpaRepository<ClassBooking, Stri
 
     boolean existsByClassIdAndMemberIdAndStatus(String classId, String memberId, String status);
 
+    List<ClassBooking> findByMemberIdOrderByBookedAtDesc(String memberId);
+
     long countByClassIdAndStatus(String classId, String status);
 }

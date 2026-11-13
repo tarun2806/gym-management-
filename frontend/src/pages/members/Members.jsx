@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { UserPlus, Download  , Edit, Trash2, Eye, Phone, X, Mail, Shield, ShieldCheck, Filter } from "lucide-react";
+import { UserPlus, Download  , Edit, Trash2, Eye, Phone, X, Mail, Shield, ShieldCheck, Filter, MailPlus, Copy, Check, Ban } from "lucide-react";
 import { useOrganization } from "../../contexts/OrganizationContext";
-import { memberService } from "../../lib/services";
+import { memberService, memberInviteService } from "../../lib/services";
 import { Button, SearchInput, Card } from "../../components/ui";
 const Members = () => {
   const { currentOrganization, isLoading: orgLoading } = useOrganization();
@@ -23,9 +23,60 @@ const Members = () => {
     trainer: ""
   });
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [invitations, setInvitations] = useState([]);
+  const [invitationsLoading, setInvitationsLoading] = useState(false);
+  const [inviteBusyId, setInviteBusyId] = useState(null);
+  const [issuedInvite, setIssuedInvite] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const [inviteError, setInviteError] = useState(null);
   useEffect(() => {
-    if (!orgLoading) fetchMembers();
+    if (!orgLoading) { fetchMembers(); fetchInvitations(); }
   }, [orgLoading, orgId]);
+  const fetchInvitations = async () => {
+    try {
+      setInvitationsLoading(true);
+      setInvitations(await memberInviteService.list({ orgId }));
+    } catch (error) {
+      console.error("Error fetching invitations:", error);
+    } finally {
+      setInvitationsLoading(false);
+    }
+  };
+  const handleInvite = async (member) => {
+    setInviteBusyId(member.id);
+    setInviteError(null);
+    setNotice(null);
+    try {
+      const res = await memberInviteService.create({ orgId }, member.id);
+      setIssuedInvite({ ...res, memberName: member.name });
+      setCopied(false);
+      fetchInvitations();
+    } catch (error) {
+      setInviteError(error.message || "Failed to create invitation");
+      if (error.status === 409) fetchMembers();
+    } finally {
+      setInviteBusyId(null);
+    }
+  };
+  const handleRevokeInvite = async (id) => {
+    if (!confirm("Revoke this invitation? The member will no longer be able to use it.")) return;
+    try {
+      await memberInviteService.revoke({ orgId }, id);
+      setNotice("Invitation revoked.");
+      fetchInvitations();
+    } catch (error) {
+      setInviteError(error.message || "Failed to revoke invitation");
+    }
+  };
+  const copyToken = async () => {
+    try {
+      await navigator.clipboard.writeText(issuedInvite.token);
+      setCopied(true);
+    } catch {
+      setInviteError("Could not copy — select and copy the token manually.");
+    }
+  };
   const fetchMembers = async () => {
     try {
       setLoading(true);
@@ -186,6 +237,54 @@ const Members = () => {
     className="rounded-2xl border-slate-100 shadow-lg shadow-slate-200/30 py-2"
   />
 
+      {notice && <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700">{notice}</div>}
+      {inviteError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{inviteError}</div>}
+
+      {
+    /* Invitations */
+  }
+      <Card className="rounded-2xl border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden bg-white">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-black text-slate-900 uppercase tracking-widest">Member Invitations</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Portal access links for members. Tokens are shown once at creation.</p>
+          </div>
+          <button onClick={fetchInvitations} className="text-xs font-bold text-blue-600 hover:text-blue-700">Refresh</button>
+        </div>
+        {invitationsLoading ? <div className="p-8 text-center text-sm text-slate-400">Loading invitations…</div> : invitations.length === 0 ? <div className="p-8 text-center text-sm text-slate-400">No invitations yet. Use the invite action on a member row.</div> : <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-slate-50/50 border-b border-slate-100">
+                <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Member</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expires</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Created</th>
+                <th className="px-6 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {invitations.map((inv) => {
+                const expired = !inv.redeemed && !inv.revoked && new Date(inv.expires_at) < new Date();
+                const status = inv.redeemed ? "Redeemed" : inv.revoked ? "Revoked" : expired ? "Expired" : "Pending";
+                const statusClass = status === "Pending" ? "bg-amber-100 text-amber-700" : status === "Redeemed" ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500";
+                const memberName = members.find((m) => m.id === inv.member_id)?.name || inv.member_id;
+                return <tr key={inv.id} className="hover:bg-slate-50/50">
+                  <td className="px-6 py-3 text-sm font-bold text-slate-900">{memberName}</td>
+                  <td className="px-6 py-3"><span className={`inline-flex px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${statusClass}`}>{status}</span></td>
+                  <td className="px-6 py-3 text-xs text-slate-500">{new Date(inv.expires_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-3 text-xs text-slate-500">{new Date(inv.created_at).toLocaleDateString()}</td>
+                  <td className="px-6 py-3 text-right">
+                    {status === "Pending" && <button onClick={() => handleRevokeInvite(inv.id)} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-red-600 hover:bg-red-50 border border-red-100">
+                      <Ban className="h-3 w-3" /> Revoke
+                    </button>}
+                  </td>
+                </tr>;
+              })}
+            </tbody>
+          </table>
+        </div>}
+      </Card>
+
       {
     /* Main Table */
   }
@@ -242,6 +341,14 @@ const Members = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!member.user_id && <button
+    className="p-2 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-100 hover:border-indigo-100 transition-all disabled:opacity-40"
+    title="Invite to member portal"
+    disabled={inviteBusyId === member.id}
+    onClick={() => handleInvite(member)}
+  >
+                          <MailPlus className="h-4 w-4" />
+                        </button>}
                         <button className="p-2 bg-white text-slate-400 hover:text-blue-600 rounded-lg shadow-sm border border-slate-100 hover:border-blue-100 transition-all" onClick={() => openViewModal(member)}>
                           <Eye className="h-4 w-4" />
                         </button>
@@ -485,6 +592,39 @@ const Members = () => {
     setShowViewModal(false);
     openEditModal(selectedMember);
   }}>Edit</Button>
+              </div>
+            </div>
+          </Card>
+        </div>}
+
+      {
+    /* Invitation Token Modal — raw token shown exactly once */
+  }
+      {issuedInvite && <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-300">
+          <Card className="max-w-md w-full p-0 rounded-3xl border-0 shadow-2xl bg-white overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 md:p-8">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Invitation Created</h2>
+                  <p className="text-slate-500 mt-1 text-sm">Share this token with <span className="font-bold">{issuedInvite.memberName}</span>. It is shown only once.</p>
+                </div>
+                <button onClick={() => setIssuedInvite(null)} className="p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Invitation token</p>
+                <p className="text-xs font-mono text-slate-800 break-all select-all">{issuedInvite.token}</p>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">
+                The member enters this token in the app under <span className="font-bold">Join a Gym</span> after signing in.
+                Expires {new Date(issuedInvite.expires_at).toLocaleString()}.
+              </p>
+              <div className="pt-4 flex gap-3">
+                <Button variant="outline" className="flex-1 rounded-xl py-3 text-sm h-10" icon={copied ? Check : Copy} onClick={copyToken}>
+                  {copied ? "Copied" : "Copy token"}
+                </Button>
+                <Button variant="primary" className="flex-1 rounded-xl py-3 bg-slate-900 border-0 text-sm h-10" onClick={() => setIssuedInvite(null)}>Done</Button>
               </div>
             </div>
           </Card>

@@ -8,4 +8,5 @@ import java.util.List;
 @Repository
 public interface DietPlanRepository extends JpaRepository<DietPlan, String> {
     List<DietPlan> findByOrganizationId(String organizationId);
+    List<DietPlan> findByMemberId(String memberId);
 }
