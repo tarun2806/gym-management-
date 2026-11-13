@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import Header from "./Header";
 import { useAuth } from "../../contexts/AuthContext";
 
-const Layout = () => {
+const Layout = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
   return (
@@ -31,7 +31,7 @@ const Layout = () => {
         <Header onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="relative z-10 flex-1 overflow-y-auto p-4 scrollbar-thin sm:p-6 lg:p-8">
           <div className="mx-auto max-w-[1400px]">
-            <Outlet />
+            {children ?? <Outlet />}
           </div>
         </main>
       </div>

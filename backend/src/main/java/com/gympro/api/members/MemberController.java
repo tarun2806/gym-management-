@@ -1,8 +1,12 @@
 package com.gympro.api.members;
 
 import com.gympro.api.auth.OrgContextService;
+import com.gympro.api.mail.EmailService;
 import com.gympro.api.model.Member;
+import com.gympro.api.model.MemberInvitation;
 import com.gympro.api.model.OrganizationMembership;
+import com.gympro.api.platform.PlatformAdminController;
+import com.gympro.api.repository.MemberInvitationRepository;
 import com.gympro.api.repository.MemberRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,12 +26,22 @@ import java.util.UUID;
 @RequestMapping("/api/members")
 public class MemberController {
 
-    private final MemberRepository memberRepository;
-    private final OrgContextService orgContext;
+    private static final java.security.SecureRandom RANDOM = new java.security.SecureRandom();
+    private static final int INVITE_TTL_DAYS = 7;
 
-    public MemberController(MemberRepository memberRepository, OrgContextService orgContext) {
+    private final MemberRepository memberRepository;
+    private final MemberInvitationRepository inviteRepository;
+    private final OrgContextService orgContext;
+    private final EmailService emailService;
+
+    public MemberController(MemberRepository memberRepository,
+                            MemberInvitationRepository inviteRepository,
+                            OrgContextService orgContext,
+                            EmailService emailService) {
         this.memberRepository = memberRepository;
+        this.inviteRepository = inviteRepository;
         this.orgContext = orgContext;
+        this.emailService = emailService;
     }
 
     @GetMapping
@@ -100,7 +114,29 @@ public class MemberController {
         if (member.getName() == null || member.getName().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required");
         }
-        return memberRepository.save(member);
+        Member saved = memberRepository.save(member);
+        if (body.get("send_invite") != null && Boolean.parseBoolean(String.valueOf(body.get("send_invite")))
+                && saved.getEmail() != null && !saved.getEmail().isBlank() && saved.getUserId() == null) {
+            sendInvite(orgId, m, saved);
+        }
+        return saved;
+    }
+
+    /** Creates a one-time invite token (hash-only stored) and emails it. */
+    private void sendInvite(String orgId, OrganizationMembership inviter, Member member) {
+        byte[] bytes = new byte[32];
+        RANDOM.nextBytes(bytes);
+        String raw = "gympro_mem_" + java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        MemberInvitation inv = new MemberInvitation();
+        inv.setId(UUID.randomUUID().toString());
+        inv.setTokenHash(PlatformAdminController.sha256(raw));
+        inv.setOrganizationId(orgId);
+        inv.setBranchId(member.getBranchId());
+        inv.setMemberId(member.getId());
+        inv.setInvitedBy(orgContext.principal().uid());
+        inv.setExpiresAt(Instant.now().plus(INVITE_TTL_DAYS, java.time.temporal.ChronoUnit.DAYS));
+        inviteRepository.save(inv);
+        emailService.sendMemberInvite(member.getEmail(), member.getName(), raw);
     }
 
     @PutMapping("/{id}")

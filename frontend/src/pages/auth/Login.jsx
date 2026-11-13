@@ -416,7 +416,10 @@ const Login = () => {
 
             <div className="border-t border-white/5 bg-slate-950/50 px-6 py-4 sm:px-8">
               <p className="text-[11px] leading-relaxed text-slate-500">
-                {mode === "signup" ? "By creating an account you agree to use this portal only for the gym that granted you access." : "Trouble signing in? Ask your gym administrator to confirm your account is active."}
+                {mode === "signup" ? "By creating an account you agree to use this portal only for the gym that granted you access."
+                  : mode === "owner" ? "Activation keys are issued by GymPro. Contact the platform vendor if you do not have one."
+                  : mode === "member" ? "Ask your gym administrator for an invitation if you do not have a token."
+                  : "Trouble signing in? Ask your gym administrator to confirm your account is active."}
               </p>
             </div>
           </Card>

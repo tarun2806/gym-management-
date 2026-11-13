@@ -99,7 +99,8 @@ const Members = () => {
         phone: newMember.phone,
         membership_type: newMember.membership_type,
         status: newMember.status,
-        trainer: newMember.trainer
+        trainer: newMember.trainer,
+        send_invite: Boolean(newMember.email && newMember.email.trim())
       });
       setShowAddModal(false);
       setNewMember({

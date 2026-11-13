@@ -65,6 +65,24 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
         }
         // Never downgrade verified=true from a stale/forged token claim of false.
         if (changed) userRepository.save(u);
+        promotePlatformAdminIfListed(u, email);
+    }
+
+    /**
+     * Bootstrap platform admins from the server-side PLATFORM_ADMIN_EMAILS
+     * allow-list. Matches only the verified Firebase token email; never demotes.
+     */
+    private void promotePlatformAdminIfListed(User u, String firebaseEmail) {
+        if (u.isPlatformAdmin() || firebaseEmail == null || firebaseEmail.isBlank()) return;
+        String admins = System.getenv("PLATFORM_ADMIN_EMAILS");
+        if (admins == null || admins.isBlank()) return;
+        for (String a : admins.split(",")) {
+            if (a.trim().equalsIgnoreCase(firebaseEmail.trim())) {
+                u.setPlatformAdmin(true);
+                userRepository.save(u);
+                return;
+            }
+        }
     }
 
     @Override

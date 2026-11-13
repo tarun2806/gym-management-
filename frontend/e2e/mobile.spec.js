@@ -6,7 +6,7 @@ test('mobile marketing page renders without overflow', async ({ page }) => {
   const errs = [];
   page.on('pageerror', e => errs.push(e.message));
   await page.goto('/#/');
-  await expect(page.locator('h1')).toContainText('Run Your Gym');
+  await expect(page.locator('h1')).toContainText('Run your gym');
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(overflow).toBe(false);
   expect(errs).toEqual([]);

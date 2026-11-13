@@ -56,7 +56,11 @@ const RoleHome = () => {
   // management dashboard.
   const fallback = user?.platformAdmin ? "platform_admin" : user?.role;
   const role = resolveOrgRole(memberships, currentOrganization?.id, fallback);
-  return role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />;
+  return (
+    <Layout>
+      {role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />}
+    </Layout>
+  );
 };
 const HomeOrApp = () => {
   const { user, isLoading } = useAuth();
