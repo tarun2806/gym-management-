@@ -60,10 +60,20 @@ const AuthProvider = ({ children }) => {
     let emailVerified = fbUser.emailVerified;
     let memberships = [];
     let platformAdmin = false;
+    let profile = null;
     try {
-      const profile = await api("/api/me/profile");
+      profile = await api("/api/me/profile");
+    } catch {
+      // A transient profile-fetch failure must not sign the user out —
+      // retry once before giving up.
+      try { profile = await api("/api/me/profile"); }
+      catch (second) { console.error("Error fetching user profile:", second); }
+    }
+    if (profile) {
       platformAdmin = profile.platform_admin === true;
-      if (profile.role && profile.role in ROLE_CAPABILITIES) {
+      if (platformAdmin) {
+        role = "platform_admin";
+      } else if (profile.role && profile.role in ROLE_CAPABILITIES) {
         role = profile.role;
       }
       if (profile.username) username = profile.username;
@@ -73,13 +83,8 @@ const AuthProvider = ({ children }) => {
       // value override a freshly-verified Firebase user.
       emailVerified = fbUser.emailVerified || profile.email_verified === true;
       memberships = Array.isArray(profile.memberships) ? profile.memberships : [];
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
     }
     if (role !== "org_owner" && isAccountDisabled(status)) {
-      return null;
-    }
-    if (!emailVerified) {
       return null;
     }
     return {
@@ -88,14 +93,20 @@ const AuthProvider = ({ children }) => {
       email: fbUser.email || void 0,
       role,
       platformAdmin,
-      permissions: ROLE_CAPABILITIES[role],
+      emailVerified,
+      permissions: ROLE_CAPABILITIES[role] || ROLE_CAPABILITIES.member,
       memberships
     };
   };
   useEffect(() => {
+    let cancelled = false;
+    const watchdog = setTimeout(() => {
+      if (!cancelled) setIsLoading(false);
+    }, 8000);
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       if (fbUser) {
         const mappedUser = await mapUser(fbUser);
+        if (cancelled) return;
         if (mappedUser === null) {
           try {
             await signOut(auth);
@@ -107,13 +118,17 @@ const AuthProvider = ({ children }) => {
           setUser(mappedUser);
           setIsAuthenticated(true);
         }
-      } else {
+      } else if (!cancelled) {
         setUser(null);
         setIsAuthenticated(false);
       }
-      setIsLoading(false);
+      if (!cancelled) setIsLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      clearTimeout(watchdog);
+      unsubscribe();
+    };
   }, []);
   useEffect(() => {
     let lastRefresh = 0;

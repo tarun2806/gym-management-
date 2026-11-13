@@ -22,9 +22,9 @@ const Card = ({
   className={twMerge(
     "rounded-2xl bg-white",
     paddingClasses[padding],
-    shadowClasses[shadow],
+    shadowClasses[shadow] || "shadow-card",
     border ? "border border-slate-200" : "",
-    hover ? "transition-shadow duration-200 hover:shadow-xl" : "",
+    hover ? "transition-shadow duration-200 hover:shadow-card-hover" : "",
     className
   )}
 >

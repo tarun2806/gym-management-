@@ -199,22 +199,30 @@ public class MeController {
             return n;
         });
         if (body.get("username") != null) u.setUsername(String.valueOf(body.get("username")));
-        if (body.get("email") != null && !String.valueOf(body.get("email")).isBlank()) {
-            u.setEmail(String.valueOf(body.get("email")));
+        // Email is always the Firebase token email. Client-supplied addresses
+        // must never be written — they could be used to spoof PLATFORM_ADMIN_EMAILS.
+        if (p.email() != null && !p.email().isBlank()) {
+            u.setEmail(p.email());
         }
-        // Platform-admin bootstrap: emails listed in PLATFORM_ADMIN_EMAILS env
-        // (comma-separated) are promoted on profile upsert. No public signup path.
-        String admins = System.getenv("PLATFORM_ADMIN_EMAILS");
-        if (admins != null && u.getEmail() != null) {
-            for (String a : admins.split(",")) {
-                if (a.trim().equalsIgnoreCase(u.getEmail().trim())) {
-                    u.setPlatformAdmin(true);
-                    break;
-                }
-            }
-        }
+        maybePromotePlatformAdmin(u, p.email());
         userRepository.save(u);
         return profile();
+    }
+
+    /**
+     * Bootstrap platform admins from the server-side allow-list, matching only
+     * the verified Firebase token email. Never demotes an existing admin.
+     */
+    private static void maybePromotePlatformAdmin(User u, String firebaseEmail) {
+        if (u.isPlatformAdmin() || firebaseEmail == null || firebaseEmail.isBlank()) return;
+        String admins = System.getenv("PLATFORM_ADMIN_EMAILS");
+        if (admins == null || admins.isBlank()) return;
+        for (String a : admins.split(",")) {
+            if (a.trim().equalsIgnoreCase(firebaseEmail.trim())) {
+                u.setPlatformAdmin(true);
+                return;
+            }
+        }
     }
 
     private static int rank(String role) {

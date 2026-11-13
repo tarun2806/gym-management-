@@ -115,8 +115,8 @@ const Login = () => {
   };
   const busy = loading || googleLoading;
   const strength = passwordStrength(formData.password);
-  const inputBase = "w-full rounded-xl border bg-slate-950/60 py-3 pr-12 pl-11 text-[15px] text-white transition-colors placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40";
-  const inputTone = (invalid) => invalid ? "border-rose-500/60 focus:border-rose-500" : "border-white/10 focus:border-indigo-500/70";
+  const inputBase = "w-full rounded-xl border bg-slate-950/60 py-3 pr-12 pl-11 text-[15px] text-white transition-colors placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-brand-500/40";
+  const inputTone = (invalid) => invalid ? "border-rose-500/60 focus:border-rose-500" : "border-white/10 focus:border-brand-500/70";
   return <div className="relative flex min-h-screen flex-col bg-slate-950 font-sans lg:flex-row">
       {
     /* Brand panel */
@@ -127,7 +127,7 @@ const Login = () => {
         <div className="absolute -bottom-40 right-[-6rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-600/10 blur-[120px]" />
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 font-display text-sm font-bold text-white shadow-glow-indigo">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 font-display text-sm font-bold text-white shadow-glow-brand">
               GP
             </div>
             <div>
@@ -139,7 +139,7 @@ const Login = () => {
           <div className="max-w-md">
             <h1 className="font-display text-4xl font-bold leading-[1.1] text-white xl:text-[2.75rem]">
               Run the whole floor
-              <span className="block text-indigo-400">from one login.</span>
+              <span className="block text-brand-500">from one login.</span>
             </h1>
             <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
               Members, classes, attendance and billing share one workspace, so the numbers on your dashboard match what
@@ -149,7 +149,7 @@ const Login = () => {
             <ul className="mt-10 space-y-5">
               {HIGHLIGHTS.map(({ icon: Icon, title, body }) => <li key={title} className="flex gap-4">
                   <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                    <Icon className="h-4 w-4 text-indigo-400" />
+                    <Icon className="h-4 w-4 text-brand-500" />
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-white">{title}</p>
@@ -171,7 +171,7 @@ const Login = () => {
       <main className="relative flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
         <div className="w-full max-w-[430px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 font-display text-sm font-bold text-white">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 font-display text-sm font-bold text-white">
               GP
             </div>
             <div>
@@ -214,6 +214,7 @@ const Login = () => {
                   setError={setOwnerError}
                   done={ownerDone}
                   setDone={setOwnerDone}
+                  authenticated={isAuthenticated}
                   onExit={() => switchMode("login")}
               />}
 
@@ -223,7 +224,7 @@ const Login = () => {
     type="button"
     onClick={() => switchMode(option)}
     aria-pressed={mode === option}
-    className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-colors ${mode === option ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-slate-200"}`}
+    className={`flex-1 rounded-lg py-2 text-[13px] font-semibold transition-colors ${mode === option ? "bg-brand-700 text-white" : "text-slate-400 hover:text-slate-200"}`}
   >
                       {option === "login" ? "Sign in" : option === "signup" ? "Sign up" : option === "owner" ? "Create a Gym" : "Join a Gym"}
                     </button>)}
@@ -265,7 +266,7 @@ const Login = () => {
                       {mode === "login" && <button
     type="button"
     onClick={() => switchMode("forgot-password")}
-    className="text-[12px] font-medium text-slate-400 underline-offset-2 hover:text-indigo-400 hover:underline"
+    className="text-[12px] font-medium text-slate-400 underline-offset-2 hover:text-brand-400 hover:underline"
   >
                           Forgot password?
                         </button>}
@@ -347,7 +348,7 @@ const Login = () => {
                         setLoading(false);
                         if (r?.ok) navigate(redirectTo, { replace: true });
                         else setFormError("Still unverified — check your inbox and try again.");
-                      }} className="flex-1 rounded-lg bg-indigo-600 px-3 py-2 text-[13px] font-semibold text-white hover:bg-indigo-500">
+                      }} className="flex-1 rounded-lg bg-brand-700 px-3 py-2 text-[13px] font-semibold text-white hover:bg-brand-600">
                       I've verified — refresh status
                     </button>
                     <button type="button" onClick={async () => {
@@ -369,7 +370,7 @@ const Login = () => {
     size="lg"
     loading={loading}
     disabled={busy}
-    className="w-full rounded-xl text-[15px] font-semibold shadow-glow-indigo"
+    className="w-full rounded-xl text-[15px] font-semibold shadow-glow-brand"
   >
                   {loading ? "Please wait\u2026" : mode === "login" ? "Sign in" : mode === "signup" ? "Create account" : "Send reset link"}
                   {!loading && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
@@ -415,17 +416,36 @@ const Login = () => {
       </main>
     </div>;
 };
-const OwnerRegister = ({ step, setStep, form, setForm, error, setError, done, setDone, onExit }) => {
+const OwnerRegister = ({ step, setStep, form, setForm, error, setError, done, setDone, authenticated, onExit }) => {
+  const { signUp, login } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [account, setAccount] = useState({ email: "", password: "" });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const validateKey = async (e) => {
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      await api("/api/owner/validate-key", { method: "POST", body: JSON.stringify({ key: form.key.trim() }) });
-      setStep("details");
+      await api("/api/owner/validate-key", { method: "POST", body: { key: form.key.trim() } });
+      setStep(authenticated ? "details" : "account");
     } catch (err) {
       setError(err.message || "Invalid activation key.");
+    } finally { setBusy(false); }
+  };
+  const createAccount = async (e) => {
+    e.preventDefault();
+    setBusy(true); setError("");
+    try {
+      const created = await signUp(account.email.trim(), account.password);
+      if (!created.ok) {
+        const existing = await login(account.email.trim(), account.password);
+        if (!existing.ok) {
+          setError(created.error || existing.error || "Could not create or sign in to that account.");
+          return;
+        }
+      }
+      setStep("details");
+    } catch (err) {
+      setError(err.message || "Could not create the owner account.");
     } finally { setBusy(false); }
   };
   const register = async (e) => {
@@ -434,14 +454,14 @@ const OwnerRegister = ({ step, setStep, form, setForm, error, setError, done, se
     try {
       await api("/api/owner/register", {
         method: "POST",
-        body: JSON.stringify({
+        body: {
           key: form.key.trim(),
           org_name: form.org_name.trim(),
           branch_name: form.branch_name.trim() || form.gym_name.trim(),
           gym_name: form.gym_name.trim(),
           address: form.address.trim(),
           phone: form.phone.trim()
-        })
+        }
       });
       setDone(true);
       setTimeout(() => window.location.assign("/#/"), 1200);
@@ -466,6 +486,24 @@ const OwnerRegister = ({ step, setStep, form, setForm, error, setError, done, se
       <button type="button" onClick={onExit} className="w-full text-center text-[12px] text-slate-400 hover:text-slate-200">Back to sign in</button>
     </form>;
   }
+  if (step === "account") {
+    return <form onSubmit={createAccount} className="space-y-4">
+      <p className="text-[13px] text-slate-400">Create the owner account that will run this gym. Use an email you can verify.</p>
+      <div className="space-y-1.5">
+        <label className="label-caps">Owner email</label>
+        <input type="email" required value={account.email} onChange={(e) => setAccount((a) => ({ ...a, email: e.target.value }))}
+          className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white" />
+      </div>
+      <div className="space-y-1.5">
+        <label className="label-caps">Password</label>
+        <input type="password" required minLength={6} value={account.password} onChange={(e) => setAccount((a) => ({ ...a, password: e.target.value }))}
+          className="w-full rounded-lg border border-white/10 bg-slate-950/60 px-3 py-2 text-sm text-white" />
+      </div>
+      {error && <p className="text-[12px] font-medium text-rose-400">{error}</p>}
+      <Button type="submit" disabled={busy} className="w-full">{busy ? "Creating account…" : "Continue"}</Button>
+      <button type="button" onClick={onExit} className="w-full text-center text-[12px] text-slate-400 hover:text-slate-200">Cancel</button>
+    </form>;
+  }
   return <form onSubmit={register} className="space-y-4">
     <p className="text-[12px] text-emerald-300">✓ Activation key accepted</p>
     {[["org_name", "Gym / organization name"], ["branch_name", "First branch name"], ["gym_name", "Display name (optional)"], ["address", "Address (optional)"], ["phone", "Phone (optional)"]].map(([k, label]) => (
@@ -486,7 +524,7 @@ const MemberRedeem = ({ token, setToken, busy, setBusy, error, setError, done, s
     e.preventDefault();
     setBusy(true); setError("");
     try {
-      await api("/api/member-invitations/redeem", { method: "POST", body: JSON.stringify({ token: token.trim() }) });
+      await api("/api/member-invitations/redeem", { method: "POST", body: { token: token.trim() } });
       setDone(true);
       setTimeout(() => window.location.assign("/#/"), 1200);
     } catch (err) {

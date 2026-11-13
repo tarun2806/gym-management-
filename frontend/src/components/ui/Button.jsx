@@ -1,11 +1,11 @@
 import { twMerge } from "tailwind-merge";
 const variantClasses = {
-  primary: "bg-indigo-600 text-white hover:bg-indigo-500 focus-visible:ring-indigo-500",
-  secondary: "bg-slate-800 text-white hover:bg-slate-700 focus-visible:ring-slate-500",
+  primary: "bg-brand-700 text-white hover:bg-brand-600 focus-visible:ring-brand-600",
+  secondary: "bg-ink-900 text-white hover:bg-ink-800 focus-visible:ring-slate-500",
   success: "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-emerald-500",
   danger: "bg-rose-600 text-white hover:bg-rose-500 focus-visible:ring-rose-500",
   warning: "bg-amber-500 text-slate-900 hover:bg-amber-400 focus-visible:ring-amber-400",
-  outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-indigo-500",
+  outline: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 focus-visible:ring-brand-600",
   ghost: "text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-slate-400"
 };
 const sizeClasses = {

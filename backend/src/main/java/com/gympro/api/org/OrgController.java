@@ -47,8 +47,9 @@ public class OrgController {
     @GetMapping("/organizations")
     public List<Organization> myOrganizations() {
         AppUserPrincipal p = orgContext.principal();
-        boolean platformAdmin = p.memberships().stream()
-                .anyMatch(m -> "platform_admin".equals(m.role()));
+        boolean platformAdmin = userRepository.findById(p.uid())
+                .map(com.gympro.api.model.User::isPlatformAdmin)
+                .orElse(false);
         if (platformAdmin) {
             return organizationRepository.findAll();
         }

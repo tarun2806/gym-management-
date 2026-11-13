@@ -192,7 +192,7 @@ public class AdminController {
         });
         if (body.get("email") != null) u.setEmail(String.valueOf(body.get("email")));
         if (body.get("username") != null) u.setUsername(String.valueOf(body.get("username")));
-        if (body.get("email_verified") != null) u.setEmailVerified(Boolean.parseBoolean(body.get("email_verified").toString()));
+        // email_verified is owned by FirebaseTokenFilter — never client-writable.
         if (body.get("status") != null) u.setStatus(str(body, "status"));
         if (body.get("preferences") != null) {
             try {

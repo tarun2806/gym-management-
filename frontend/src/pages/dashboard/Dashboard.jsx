@@ -47,9 +47,9 @@ const Dashboard = () => {
       const weekAhead = Date.now() + 7 * DAY_MS;
       const [summary, members, classes, equipment] = await Promise.all([
         api("/api/dashboard", { scope }),
-        memberService.list(scope),
-        classService.list(scope),
-        equipmentService.list(scope)
+        memberService.list(scope).catch(() => []),
+        classService.list(scope).catch(() => []),
+        equipmentService.list(scope).catch(() => [])
       ]);
       const totalEquip = equipment.length;
       const operationalEquip = equipment.filter((e) => e.status === "operational").length;
@@ -60,7 +60,9 @@ const Dashboard = () => {
       setStatsData({
         members: summary.total_members ?? members.length,
         classes: summary.classes ?? classes.length,
-        revenueMonth: `\u20B9${Number(summary.monthly_revenue ?? 0).toLocaleString()}`,
+        revenueMonth: summary.monthly_revenue == null
+          ? null
+          : `\u20B9${Number(summary.monthly_revenue).toLocaleString()}`,
         equipment: { value: eHealth, hasData: totalEquip > 0, operational: operationalEquip, total: totalEquip }
       });
       setTodaysClasses(classes.filter((c) => (c.status || "").toLowerCase() === "active" || !c.status).sort((a, b) => (a.schedule_time || "").localeCompare(b.schedule_time || "")).slice(0, 5).map((c) => ({
@@ -160,16 +162,16 @@ const Dashboard = () => {
           <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.classes}</h3>
         </Card>
 
-        <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
+        {statsData.revenueMonth != null && <Card className="rounded-2xl border border-slate-200/80 shadow-sm p-6 bg-white">
           <div className="flex justify-between items-start mb-4">
-            <div className="h-10 w-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors duration-300">
+            <div className="h-10 w-10 bg-teal-50 text-teal-700 rounded-xl flex items-center justify-center">
               <DollarSign className="h-5 w-5" />
             </div>
-            <span className="text-[9px] font-bold bg-indigo-50 text-indigo-500 px-2 py-0.5 rounded-full uppercase tracking-widest">This month</span>
+            <span className="text-[10px] font-semibold bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full uppercase tracking-wide">This month</span>
           </div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Revenue</p>
-          <h3 className="text-2xl font-black text-slate-900 tracking-tight">{statsData.revenueMonth}</h3>
-        </Card>
+          <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Revenue</p>
+          <h3 className="text-2xl font-bold text-slate-900 tracking-tight">{statsData.revenueMonth}</h3>
+        </Card>}
 
         <Card className="rounded-2xl border-0 shadow-lg shadow-slate-200/40 p-6 bg-white group hover:-translate-y-1 transition-all duration-300">
           <div className="flex justify-between items-start mb-4">

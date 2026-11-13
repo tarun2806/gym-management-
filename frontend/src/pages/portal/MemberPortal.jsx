@@ -4,16 +4,16 @@ import { useOrganization } from "../../contexts/OrganizationContext";
 import { memberPortalService } from "../../lib/services";
 
 const Field = ({ label, value }) => (
-  <div className="rounded-xl border bg-white p-5">
-    <p className="text-sm text-gray-500">{label}</p>
-    <p className="text-lg font-semibold text-gray-900">{value || "—"}</p>
+  <div className="surface-card p-5">
+    <p className="text-sm text-slate-500">{label}</p>
+    <p className="text-lg font-semibold text-slate-900">{value || "—"}</p>
   </div>
 );
 
 const Section = ({ title, children }) => (
-  <div className="rounded-xl border bg-white">
-    <div className="border-b px-5 py-3">
-      <h2 className="text-sm font-bold text-gray-900">{title}</h2>
+  <div className="surface-card">
+    <div className="border-b border-slate-100 px-5 py-3">
+      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
     </div>
     <div className="p-5">{children}</div>
   </div>
@@ -115,7 +115,7 @@ export default function MemberPortal() {
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Member Portal</h1>
+        <h1 className="page-title">Member Portal</h1>
         <p className="mt-1 text-gray-500">
           {currentOrganization?.name ?? "Your gym"}
           {currentBranch?.name ? ` — ${currentBranch.name}` : ""}

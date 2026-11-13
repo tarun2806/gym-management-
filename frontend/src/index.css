@@ -17,13 +17,11 @@
     @apply font-display tracking-tight;
   }
 
-  /* Consistent, visible keyboard focus on interactive elements. */
   :focus-visible {
-    outline: 2px solid rgb(99 102 241);
+    outline: 2px solid rgb(13 148 136);
     outline-offset: 2px;
   }
 
-  /* Remove the number-input spinners used for search and filter fields. */
   input[type="number"]::-webkit-outer-spin-button,
   input[type="number"]::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -31,15 +29,32 @@
   }
 }
 
+@layer components {
+  .btn-brand {
+    @apply inline-flex items-center justify-center rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-semibold text-white shadow-glow-brand transition hover:bg-brand-600;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-card;
+  }
+
+  .page-title {
+    @apply font-display text-2xl font-semibold text-slate-900 sm:text-3xl;
+  }
+
+  .page-subtitle {
+    @apply mt-1 text-sm text-slate-500;
+  }
+}
+
 @layer utilities {
-  /* Uppercase field labels. Readable floor is 11px, not the old 8-9px. */
   .label-caps {
-    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400;
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500;
   }
 
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: rgb(51 65 85) transparent;
+    scrollbar-color: rgb(148 163 184) transparent;
   }
 
   .scrollbar-thin::-webkit-scrollbar {
@@ -48,7 +63,7 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-slate-700;
+    @apply rounded-full bg-slate-300;
   }
 }
 

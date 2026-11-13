@@ -54,7 +54,8 @@ const RoleHome = () => {
   // is not a known management role (member, legacy "user", missing or
   // unresolved membership) lands on the member portal — never the
   // management dashboard.
-  const role = resolveOrgRole(memberships, currentOrganization?.id, user?.role);
+  const fallback = user?.platformAdmin ? "platform_admin" : user?.role;
+  const role = resolveOrgRole(memberships, currentOrganization?.id, fallback);
   return role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />;
 };
 const HomeOrApp = () => {

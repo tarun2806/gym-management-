@@ -27,12 +27,12 @@ export default function PlatformDashboard() {
   ];
   return (
     <div>
-      <h1 className="text-2xl font-extrabold">Platform Overview</h1>
+      <h1 className="page-title">Platform Overview</h1>
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {cards.map(([label, val]) => (
-          <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
-            <p className="mt-1 text-2xl font-extrabold">{val}</p>
+          <div key={label} className="surface-card p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
+            <p className="mt-1 text-2xl font-semibold">{val}</p>
           </div>
         ))}
       </div>

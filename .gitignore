@@ -45,3 +45,7 @@ backend/firebase-service-account.json
 
 # Playwright artifacts
 frontend/test-results/
+
+# Local database dumps
+backups/
+*.sql.gz

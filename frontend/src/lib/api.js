@@ -32,10 +32,14 @@ async function api(path, options = {}) {
   const t = await token();
   if (t) headers["Authorization"] = `Bearer ${t}`;
   Object.assign(headers, tenantHeaders(scope));
+  const payload = body === undefined
+    ? undefined
+    : typeof body === "string" ? body : JSON.stringify(body);
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers,
-    body: body !== void 0 ? JSON.stringify(body) : void 0
+    body: payload,
+    signal: options.signal ?? AbortSignal.timeout(20000)
   });
   if (!res.ok) {
     let message = `API ${res.status}`;

@@ -70,15 +70,36 @@ public class SubscriptionController {
         this.razorpay = client;
     }
 
-    /** The caller's owned organization — org_owner only, members excluded. */
+    /**
+     * The caller's owned organization. Prefers X-Org-Id when the caller is
+     * org_owner of that org so multi-org owners cannot charge the wrong gym.
+     */
     private String ownerOrgId() {
         AppUserPrincipal p = orgContext.principal();
-        return membershipRepo.findByUserIdAndStatus(p.uid(), "active").stream()
+        List<OrganizationMembership> owned = membershipRepo.findByUserIdAndStatus(p.uid(), "active")
+                .stream()
                 .filter(m -> "org_owner".equals(m.getRole()))
-                .map(OrganizationMembership::getOrganizationId)
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
-                        "organization owner required"));
+                .toList();
+        if (owned.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "organization owner required");
+        }
+        jakarta.servlet.http.HttpServletRequest req =
+                ((org.springframework.web.context.request.ServletRequestAttributes)
+                        org.springframework.web.context.request.RequestContextHolder.currentRequestAttributes())
+                        .getRequest();
+        String header = req.getHeader("X-Org-Id");
+        if (header != null && !header.isBlank()) {
+            return owned.stream()
+                    .map(OrganizationMembership::getOrganizationId)
+                    .filter(header::equals)
+                    .findFirst()
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                            "organization owner required"));
+        }
+        if (owned.size() > 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-Org-Id required");
+        }
+        return owned.get(0).getOrganizationId();
     }
 
     @GetMapping("/api/me/subscription")

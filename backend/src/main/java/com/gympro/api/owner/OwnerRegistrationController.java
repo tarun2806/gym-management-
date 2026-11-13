@@ -71,10 +71,9 @@ public class OwnerRegistrationController {
         return k;
     }
 
-    /** Step 1: validate the key before showing the registration form. */
+    /** Step 1: validate the key before showing the registration form. Auth optional. */
     @PostMapping("/validate-key")
     public Map<String, Object> validateKey(@RequestBody Map<String, Object> body) {
-        orgContext.principal(); // authenticated
         OwnerActivationKey k = requireKey(String.valueOf(body.getOrDefault("key", "")));
         return Map.of("valid", true, "label", k.getLabel() != null ? k.getLabel() : "");
     }

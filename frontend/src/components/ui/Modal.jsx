@@ -52,7 +52,7 @@ const Modal = ({
     /* Modal */
   }
         <div className={`relative w-full ${sizeClasses[size]} ${className}`}>
-          <div className="relative bg-white rounded-lg shadow-xl">
+          <div className="relative rounded-2xl bg-white shadow-card">
             {
     /* Header */
   }
