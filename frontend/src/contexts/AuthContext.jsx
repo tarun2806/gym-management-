@@ -174,6 +174,14 @@ const AuthProvider = ({ children }) => {
         await signOut(auth);
         return { ok: false, error: UNVERIFIED_MESSAGE };
       }
+      // Resolve the mapped user before reporting success — callers navigate
+      // immediately, and the route guard must never see a null user for an
+      // authenticated session.
+      const mapped = await mapUser(cred.user);
+      if (mapped) {
+        setUser(mapped);
+        setIsAuthenticated(true);
+      }
       return ok;
     } catch (error) {
       console.error("Login error:", error);
@@ -207,6 +215,11 @@ const AuthProvider = ({ children }) => {
         }
       }).catch(() => {
       });
+      const mapped = await mapUser(result.user);
+      if (mapped) {
+        setUser(mapped);
+        setIsAuthenticated(true);
+      }
       return ok;
     } catch (error) {
       console.error("Google sign in error:", error);

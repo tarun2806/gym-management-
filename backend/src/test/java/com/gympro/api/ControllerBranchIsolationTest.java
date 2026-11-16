@@ -8,6 +8,7 @@ import com.gympro.api.dashboard.DashboardController;
 import com.gympro.api.equipment.EquipmentController;
 import com.gympro.api.expenses.ExpenseController;
 import com.gympro.api.inventory.InventoryController;
+import com.gympro.api.mail.EmailService;
 import com.gympro.api.members.MemberController;
 import com.gympro.api.payments.PaymentController;
 import com.gympro.api.payroll.PayrollController;
@@ -253,7 +254,8 @@ class ControllerBranchIsolationTest {
     void memberDeniedOrgWideManagementReads() {
         login("org1", null, "member");
         // Org-wide member list (PII), payments and invoices must 403 for members.
-        var members = new MemberController(memberRepo, orgContext);
+        var members = new MemberController(memberRepo,
+                mock(MemberInvitationRepository.class), orgContext, mock(EmailService.class));
         assertEquals(403, statusOf(() -> members.list("org1", null, null)));
         var payments = new PaymentController(paymentRepo, orgContext);
         assertEquals(403, statusOf(() -> payments.list("org1", 0, 20)));
@@ -290,7 +292,8 @@ class ControllerBranchIsolationTest {
         login("org1", null, "trainer");
         var payments = new PaymentController(paymentRepo, orgContext);
         assertEquals(403, statusOf(() -> payments.list("org1", 0, 20)));
-        var members = new MemberController(memberRepo, orgContext);
+        var members = new MemberController(memberRepo,
+                mock(MemberInvitationRepository.class), orgContext, mock(EmailService.class));
         assertEquals(403, statusOf(() -> members.list("org1", null, null)));
         var attendance = new AttendanceController(attendanceRepo, memberRepo, orgContext);
         assertEquals(403, statusOf(() -> attendance.list("org1", null)));
@@ -313,7 +316,8 @@ class ControllerBranchIsolationTest {
     @Test
     void memberUpdateOtherBranchDenied() {
         login("org1", "bA", "staff");
-        var c = new MemberController(memberRepo, orgContext);
+        var c = new MemberController(memberRepo,
+                mock(MemberInvitationRepository.class), orgContext, mock(EmailService.class));
         var m = new com.gympro.api.model.Member();
         m.setOrganizationId("org1"); m.setBranchId("bB");
         when(memberRepo.findById("m1")).thenReturn(java.util.Optional.of(m));

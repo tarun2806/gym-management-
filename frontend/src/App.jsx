@@ -56,6 +56,9 @@ const RoleHome = () => {
   // management dashboard.
   const fallback = user?.platformAdmin ? "platform_admin" : user?.role;
   const role = resolveOrgRole(memberships, currentOrganization?.id, fallback);
+  // Platform admins with no org membership belong on the vendor console,
+  // never on a tenant dashboard.
+  if (role === "platform_admin") return <Navigate to="/platform" replace />;
   return (
     <Layout>
       {role && MANAGEMENT_ROLES.has(role) ? <Dashboard /> : <MemberPortal />}

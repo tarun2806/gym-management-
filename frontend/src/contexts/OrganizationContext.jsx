@@ -112,7 +112,12 @@ const OrganizationProvider = ({ children }) => {
         if (cancelled || seq !== loadSeq.current) return;
         setOrganizations(orgs);
         const storedOrgId = readStored(orgStorageKey(uid));
-        const initial = orgs.find((o) => o.id === storedOrgId) ?? orgs[0] ?? null;
+        // Tenant context must come from an actual membership. Platform admins
+        // legitimately see every org in the switcher but must never inherit one
+        // implicitly — they land on platform scope until they explicitly pick.
+        const memberOrgIds = new Set(active.map((m) => m.org_id));
+        const initial = orgs.find((o) => o.id === storedOrgId && memberOrgIds.has(o.id))
+          ?? (user.platformAdmin ? null : orgs.find((o) => memberOrgIds.has(o.id)) ?? orgs[0] ?? null);
         setCurrentOrganizationState(initial);
         setCurrentBranchState(null);
         setBranches([]);

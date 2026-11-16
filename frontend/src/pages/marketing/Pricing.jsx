@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import MarketingLayout from "./MarketingLayout";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8090";
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? "http://localhost:8090" : "");
 
 export default function Pricing() {
   const [plans, setPlans] = useState(null);

@@ -18,9 +18,8 @@ import java.util.List;
  * Verifies Firebase ID tokens via the Admin SDK.
  *
  * Credential resolution order:
- *  1. FIREBASE_AUTH_EMULATOR_HOST set -> emulator mode (unsigned tokens OK)
- *  2. firebase.service-account-path -> service account JSON file
- *  3. Application Default Credentials
+ *  1. firebase.service-account-path -> service account JSON file
+ *  2. Application Default Credentials
  * If none are available the provider stays disabled and all token
  * verification fails closed (requests are rejected).
  */
@@ -40,14 +39,9 @@ public class FirebaseAuthProvider {
     @PostConstruct
     void init() {
         try {
-            boolean emulator = System.getenv("FIREBASE_AUTH_EMULATOR_HOST") != null
-                    && !System.getenv("FIREBASE_AUTH_EMULATOR_HOST").isBlank();
             if (FirebaseApp.getApps().isEmpty()) {
                 FirebaseOptions.Builder builder = FirebaseOptions.builder();
-                if (emulator) {
-                    // Auth emulator accepts unsigned tokens; no credentials needed.
-                    builder.setCredentials(com.google.auth.oauth2.GoogleCredentials.newBuilder().build());
-                } else if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
+                if (serviceAccountPath != null && !serviceAccountPath.isBlank()) {
                     builder.setCredentials(
                             GoogleCredentials.fromStream(new FileInputStream(serviceAccountPath)));
                 } else {
@@ -59,8 +53,7 @@ public class FirebaseAuthProvider {
                 FirebaseApp.initializeApp(builder.build());
             }
             firebaseAuth = FirebaseAuth.getInstance();
-            log.info("FirebaseAuthProvider initialized (emulatorHost={})",
-                    System.getenv("FIREBASE_AUTH_EMULATOR_HOST"));
+            log.info("FirebaseAuthProvider initialized (projectId={})", projectId);
         } catch (Exception e) {
             log.warn("Firebase Admin SDK not initialized — token verification disabled: {}", e.getMessage());
             firebaseAuth = null;

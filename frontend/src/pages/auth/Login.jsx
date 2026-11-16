@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { ShieldCheck, CalendarCheck2, Users2, Wallet  , Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import { api } from "../../lib/api";
+import emblem from "../../assets/gympro-emblem.png";
 import { Button, Card } from "../../components/ui";
 const HIGHLIGHTS = [
   { icon: Users2, title: "Members & memberships", body: "One record per member with plan, expiry and renewal history." },
@@ -127,9 +128,7 @@ const Login = () => {
         <div className="absolute -bottom-40 right-[-6rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-600/10 blur-[120px]" />
         <div className="relative z-10 flex w-full flex-col justify-between p-12 xl:p-16">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 font-display text-sm font-bold text-white shadow-glow-brand">
-              GP
-            </div>
+            <img src={emblem} alt="GymPro" className="h-10 w-10 rounded-xl object-cover shadow-glow-brand" />
             <div>
               <p className="font-display text-[15px] font-bold tracking-tight text-white">GymPro</p>
               <p className="text-[11px] font-medium tracking-wide text-slate-500">Management Portal</p>
@@ -171,9 +170,7 @@ const Login = () => {
       <main className="relative flex flex-1 items-center justify-center px-5 py-10 sm:px-8">
         <div className="w-full max-w-[430px] animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 font-display text-sm font-bold text-white">
-              GP
-            </div>
+            <img src={emblem} alt="GymPro" className="h-10 w-10 rounded-xl object-cover" />
             <div>
               <p className="font-display text-[15px] font-bold tracking-tight text-white">GymPro</p>
               <p className="text-[11px] font-medium tracking-wide text-slate-500">Management Portal</p>

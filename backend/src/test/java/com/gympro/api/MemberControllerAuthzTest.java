@@ -1,9 +1,11 @@
 package com.gympro.api;
 
 import com.gympro.api.auth.OrgContextService;
+import com.gympro.api.mail.EmailService;
 import com.gympro.api.members.MemberController;
 import com.gympro.api.model.Member;
 import com.gympro.api.repository.BranchRepository;
+import com.gympro.api.repository.MemberInvitationRepository;
 import com.gympro.api.repository.MemberRepository;
 import com.gympro.api.repository.OrganizationMembershipRepository;
 import com.gympro.api.security.AppUserPrincipal;
@@ -35,7 +37,9 @@ class MemberControllerAuthzTest {
     void setUp() {
         memberRepo = mock(MemberRepository.class);
         controller = new MemberController(memberRepo,
-                new OrgContextService(mock(OrganizationMembershipRepository.class), mock(BranchRepository.class), mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class)));
+                mock(MemberInvitationRepository.class),
+                new OrgContextService(mock(OrganizationMembershipRepository.class), mock(BranchRepository.class), mock(com.gympro.api.repository.OrganizationRepository.class), mock(com.gympro.api.repository.OrganizationSubscriptionRepository.class), mock(com.gympro.api.subscription.SubscriptionService.class)),
+                mock(EmailService.class));
     }
 
     @AfterEach

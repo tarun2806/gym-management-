@@ -1,18 +1,12 @@
 import { test, expect } from '@playwright/test';
-const PW = 'Test1234!';
-async function login(page, email) {
-  await page.goto('/#/login');
-  await page.locator('input[type="email"]').fill(email);
-  await page.locator('input[type="password"]').first().fill(PW);
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/#\/(?!login)/, { timeout: 25000 });
-  await page.waitForTimeout(3000);
-}
+import { login, skipUnlessAccounts } from './helpers.js';
 
 test.describe('browser-driven CRUD', () => {
+  test.beforeEach(() => skipUnlessAccounts('owner', 'member'));
+
   test('owner creates a member via UI form', async ({ page }) => {
     const errs = []; page.on('pageerror', e => errs.push(e.message));
-    await login(page, 'owner@test.local');
+    await login(page, 'owner', { settleMs: 3000 });
     await page.goto('/#/members');
     await page.waitForTimeout(2500);
     await page.getByRole('button', { name: /add new/i }).click();
@@ -27,7 +21,7 @@ test.describe('browser-driven CRUD', () => {
   });
 
   test('member cannot open management member creation', async ({ page }) => {
-    await login(page, 'member@test.local');
+    await login(page, 'member', { settleMs: 2500 });
     await page.goto('/#/members');
     await page.waitForTimeout(2500);
     await expect(page.getByRole('button', { name: /add new/i })).toHaveCount(0);

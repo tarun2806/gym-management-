@@ -1,4 +1,5 @@
 import { NavLink, useLocation, useNavigate, Link } from "react-router-dom";
+import emblem from "../../assets/gympro-emblem.png";
 import { useAuth } from "../../contexts/AuthContext";
 import { useOrganization } from "../../contexts/OrganizationContext";
 import { resolveOrgRole } from "../../lib/permissions";
@@ -93,9 +94,7 @@ const Sidebar = ({ onClose }) => {
     <div className="relative flex h-full w-64 flex-col border-r border-white/10 bg-ink-900 text-white">
       <div className="relative z-10 flex h-16 items-center justify-between border-b border-white/10 px-4">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-700 font-display text-sm font-bold">
-            GP
-          </div>
+          <img src={emblem} alt="GymPro" className="h-9 w-9 rounded-xl object-cover" />
           <div>
             <p className="font-display text-[15px] font-semibold leading-none">GymPro</p>
             <p className="mt-1 text-[11px] font-medium capitalize text-slate-500">{orgRole?.replaceAll("_", " ") || "Signed in"}</p>

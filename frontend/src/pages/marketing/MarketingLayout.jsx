@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import logo from "../../assets/gympro-logo.png";
 
 const NAV = [
   ["/", "Home"],
@@ -12,11 +13,8 @@ const NAV = [
 ];
 
 const Logo = () => (
-  <Link to="/" className="flex items-center gap-2.5">
-    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-ink-900 font-display text-sm font-bold text-white">
-      GP
-    </span>
-    <span className="font-display text-lg font-semibold tracking-tight text-ink-900">GymPro</span>
+  <Link to="/" className="flex items-center">
+    <img src={logo} alt="GymPro" className="h-10 w-auto" />
   </Link>
 );
 
@@ -93,7 +91,7 @@ export default function MarketingLayout({ children }) {
       <footer className="border-t border-slate-200 bg-slate-50">
         <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:grid-cols-2 sm:px-6 lg:grid-cols-4">
           <div>
-            <p className="font-display text-lg font-semibold">GymPro</p>
+            <img src={logo} alt="GymPro" className="h-9 w-auto" />
             <p className="mt-2 max-w-xs text-sm leading-relaxed text-slate-500">
               Multi-tenant gym management for members, classes, attendance and billing.
             </p>

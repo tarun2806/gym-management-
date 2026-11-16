@@ -14,9 +14,10 @@ import {
   setDoc
 } from "firebase/firestore";
 import { readFileSync } from "fs";
+import process from "node:process";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 let testEnv;
-const RULES = readFileSync("firestore.rules", "utf8");
+const RULES = readFileSync(new URL("../../firestore.rules", import.meta.url), "utf8");
 async function seedUser(uid, role) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), "users", uid), {
@@ -32,7 +33,7 @@ beforeAll(async () => {
     firestore: {
       rules: RULES,
       host: "127.0.0.1",
-      port: 8080
+      port: Number(process.env.FIRESTORE_EMULATOR_PORT || 8080)
     }
   });
 });
